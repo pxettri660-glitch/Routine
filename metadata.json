@@ -1,0 +1,8 @@
+{
+  "name": "Prince Engine",
+  "description": "The Ultimate Routine Dashboard and productivity execution cockpit.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
