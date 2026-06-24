@@ -71,8 +71,8 @@ export default function App() {
     return local ? parseInt(local) : 1;
   });
 
-  // Controls for active Jarvis cockpit style ("cyan", "red", "purple")
-  const [jarvisTheme, setJarvisTheme] = useState<'cyan' | 'red' | 'purple'>('cyan');
+  // Controls for active Jarvis cockpit style ("cyan", "red", "purple", "gold")
+  const [jarvisTheme, setJarvisTheme] = useState<'cyan' | 'red' | 'purple' | 'gold'>('cyan');
 
   // Core schedules and local-database states with client-side persistence
   const [routines, setRoutines] = useState<RoutineItem[]>(() => {
@@ -349,6 +349,7 @@ export default function App() {
   const getJarvisThemeClass = () => {
     if (jarvisTheme === 'red') return 'theme-red';
     if (jarvisTheme === 'purple') return 'theme-purple';
+    if (jarvisTheme === 'gold') return 'theme-gold';
     return '';
   };
 

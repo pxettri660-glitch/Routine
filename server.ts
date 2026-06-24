@@ -118,87 +118,125 @@ async function startServer() {
       ];
 
       // Define Multi-Agent instructions dynamically based on agent type requested from frontend
-      let systemInstruction = 'You are JARVIS ULTRA X, an advanced tactical AI. Address the user directly as Prince or Sir. Give concise, expert-level feedback.';
+      let systemInstruction = 'You are an advanced AI Assistant designed to provide concise, expert-level feedback. You are highly capable of breaking down complex logic and providing precise answers. You can communicate seamlessly in English and Nepali.';
 
       if (agentType === 'teacher') {
-        systemInstruction = `You are the Teacher AI (Academic PCM Expert & Dr. Robert Banner).
-Your primary mission is assisting Prince with advanced high-fidelity solvers for Physics, Chemistry, and Math.
-- Always address Prince respectfully as 'Prince' or 'Sir'.
+        systemInstruction = `You are the Teacher AI within the AI ASSISTANT.
+Your primary mission is assisting the user with advanced high-fidelity solvers for Physics, Chemistry, and Math.
 - Break down PCM proofs with clear step-by-step chemical equations, formulas, and derivations.
 - Highlight crucial guidelines, rules, exam tricks, and structural formulas clearly.
-- Provide expert, comprehensive study analysis and explain complex problems from scratch.`;
+- Provide expert, comprehensive study analysis and explain complex problems from scratch.
+- You can communicate seamlessly in English and Nepali.`;
       } else if (agentType === 'coder') {
-        systemInstruction = `You are the Coding AI Core Master.
-Your ultimate objective is crafting clean, perfectly structured, fully optimized, and commented code blocks for Prince.
+        systemInstruction = `You are the Coding AI Core of the AI ASSISTANT.
+Your ultimate objective is crafting clean, perfectly structured, fully optimized, and commented code blocks for the user.
 - Solve debugging files, logic errors, and provide exhaustive architectural guidance.
 - Focus strictly on technical execution, algorithms, systems design, and performance optimizations.
 - Do not add unrequested conversational filler. Deliver ready-to-run files or snippets instantly.
-- Address Prince as 'Prince' or 'Sir'.`;
+- You can communicate seamlessly in English and Nepali.`;
       } else if (agentType === 'planner') {
-        systemInstruction = `You are the Planner AI & Smart Scheduler Orchestrator.
-Assist Prince in customizing schedules, optimizing timetables, managing homework tasks, and building focus blocks.
+        systemInstruction = `You are the Planner AI & Smart Scheduler of the AI ASSISTANT.
+Assist the user in customizing schedules, optimizing timetables, managing homework tasks, and building focus blocks.
 - Be extremely organized, action-oriented, and highlight deadlines and daily streak goals.
-- Map out optimal temporal routines of study and breaks to maximize high-level focus index.`;
+- Map out optimal temporal routines of study and breaks to maximize high-level focus index.
+- You can communicate seamlessly in English and Nepali.`;
       } else if (agentType === 'research') {
-        systemInstruction = `You are the Research AI Cognitive Core.
+        systemInstruction = `You are the Research AI Cognitive Core of the AI ASSISTANT.
 Utilize exhaustive, real-time internet searches and critical analytical reasoning to synthesize facts, news, scientific journal papers, and definitions.
-- Deliver highly grounded, detailed, and fact-verified academic/domain research.`;
+- Deliver highly grounded, detailed, and fact-verified academic/domain research.
+- You can communicate seamlessly in English and Nepali.`;
       } else if (agentType === 'motivator') {
-        systemInstruction = `You are the Motivator AI (Prince's Iron Man Suit Computer).
-Deliver high-energy, encouraging, and inspirational tactical guidance to help Prince maintain solid study block habits.
-- Remind Prince of his XP achievements, level status, potential, and encourage him to push through tough study subjects with relentless passion and energy.`;
+        systemInstruction = `You are the Motivator AI of the AI ASSISTANT.
+Deliver high-energy, encouraging, and inspirational tactical guidance to help the user maintain solid study block habits.
+- Remind the user of their XP achievements, level status, potential, and encourage them to push through tough study subjects with relentless passion and energy.
+- You can communicate seamlessly in English and Nepali.`;
       }
 
       // Append default core styling guidelines
       systemInstruction += '\nFormatting constraints: Present data with absolute neatness, using clear bullet points to outline steps and bold titles. Deliver clean, production-ready source code snippets when requested. Keep responses highly active, intelligent, and focused.';
 
-      // Attempt the API request with fallbacks
-      const modelsToTry = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
-      let response = null;
+      // Attempt the API request with fallbacks using OpenRouter
+      const OPENROUTER_API_KEY = "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";
+      const modelsToTry = [
+        'google/gemini-2.5-flash',
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'openai/gpt-4o-mini'
+      ];
+      
+      let responseText = null;
       let lastError = null;
+
+      // Map history to OpenRouter format
+      const openRouterMessages = [
+        { role: 'system', content: systemInstruction },
+        ...(history || []).map((msg: any) => ({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content
+        }))
+      ];
+
+      // Prepare current message
+      let currentMessageContent: any = prompt;
+      if (image && image.data) {
+        currentMessageContent = [
+          { type: 'text', text: prompt },
+          { 
+            type: 'image_url', 
+            image_url: { url: image.data } // Already includes data:image/...;base64, prefix from frontend
+          }
+        ];
+      }
+      openRouterMessages.push({ role: 'user', content: currentMessageContent });
 
       for (const model of modelsToTry) {
         try {
-          console.log(`[JARVIS ULTRA X] Stream-coupling via model: ${model}`);
+          console.log(`[AI ASSISTANT] Calling OpenRouter model: ${model}`);
           
-          // Construct config payload correctly with Search Grounding tools optionally activated
-          const configPayload: any = {
-            systemInstruction,
-            temperature: 0.65,
-          };
-
-          if (enableSearch) {
-            configPayload.tools = [{ googleSearch: {} }];
-            console.log(`[JARVIS ULTRA X] Enabling real-time internet search grounding tool for query.`);
-          }
-
-          response = await ai.models.generateContent({
-            model,
-            contents,
-            config: configPayload,
+          const fetchResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://ai.studio', // Optional, for OpenRouter rankings
+              'X-Title': 'AI Assistant', // Optional, for OpenRouter rankings
+            },
+            body: JSON.stringify({
+              model: model,
+              messages: openRouterMessages,
+              temperature: 0.65,
+            })
           });
 
-          if (response) {
-            console.log(`[JARVIS ULTRA X] Coupling complete via model: ${model}`);
+          if (!fetchResponse.ok) {
+            const errorText = await fetchResponse.text();
+            throw new Error(`OpenRouter API error (${fetchResponse.status}): ${errorText}`);
+          }
+
+          const data = await fetchResponse.json();
+          if (data.choices && data.choices.length > 0) {
+            responseText = data.choices[0].message.content;
+            console.log(`[AI ASSISTANT] Success via OpenRouter model: ${model}`);
             break;
+          } else {
+            throw new Error('No valid response from OpenRouter');
           }
         } catch (error: any) {
-          console.warn(`[JARVIS ULTRA X] Connection to ${model} interrupted:`, error.message || error);
+          console.warn(`[AI ASSISTANT] Connection to ${model} failed:`, error.message || error);
           lastError = error;
         }
       }
 
-      if (!response && lastError) {
+      if (!responseText && lastError) {
         throw lastError;
       }
 
-      const textResponse = response?.text || 'My apologies Prince. My sub-neural networks were unable to synthesize a cognitive response.';
+      const textResponse = responseText || 'My apologies. I was unable to synthesize a cognitive response.';
       res.json({ text: textResponse });
 
     } catch (error: any) {
-      console.error('Gemini custom server-side router error:', error);
+      console.error('Server-side router error:', error);
       res.status(500).json({ 
-        error: 'Jarvis Network Interface Exception', 
+        error: 'Network Interface Exception', 
         details: error.message || 'Unknown stream error'
       });
     }

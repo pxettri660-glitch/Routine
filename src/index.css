@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@600;750&display=swap');
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @layer base {
   body {
@@ -27,5 +28,19 @@
 
 .animate-pulse-dot {
   animation: pulse-dot 2s infinite;
+}
+
+/* Cyberpunk Themes */
+.theme-red {
+  background: radial-gradient(circle at 50% -50%, rgba(225, 29, 72, 0.15) 0%, transparent 60%);
+}
+.theme-purple {
+  background: radial-gradient(circle at 50% -50%, rgba(139, 92, 246, 0.15) 0%, transparent 60%);
+}
+.theme-gold {
+  background: radial-gradient(circle at 50% -50%, rgba(245, 158, 11, 0.15) 0%, transparent 60%);
+}
+body {
+  background-color: #020617;
 }
 

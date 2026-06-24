@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Send, Plus, Bot, User, Volume2, Sparkles, AlertCircle, 
+  Send, Plus, Bot, User, Sparkles, AlertCircle, 
   Layers, Globe, Cpu, BookOpen, Calendar, TrendingUp, 
   Trash2, Play, Square, FileText, Check, Zap, Timer, HelpCircle, 
-  Activity, Award, Compass, Search, Wand2, Paperclip, CheckSquare,
-  Mic, MicOff
+  Activity, Award, Compass, Search, Wand2, Paperclip, CheckSquare
 } from 'lucide-react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessage {
   id: string;
@@ -51,8 +52,8 @@ interface StudyHoursRecord {
 
 interface JarvisProps {
   onNavigate: (viewId: string) => void;
-  selectedTheme: 'cyan' | 'red' | 'purple';
-  onChangeTheme: (theme: 'cyan' | 'red' | 'purple') => void;
+  selectedTheme: 'cyan' | 'red' | 'purple' | 'gold';
+  onChangeTheme: (theme: 'cyan' | 'red' | 'purple' | 'gold') => void;
   isThemeLight?: boolean;
   onToggleLightDarkTheme?: () => void;
 }
@@ -78,18 +79,13 @@ export default function Jarvis({
   }, [messages]);
   const [inputVal, setInputVal] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [statusText, setStatusText] = useState('OFFLINE (MIC MUTED)');
-  const [statusColor, setStatusColor] = useState('text-rose-450');
-  const [voiceModel, setVoiceModel] = useState<'male' | 'female'>('male');
+  const [statusText, setStatusText] = useState('SYSTEM ONLINE');
+  const [statusColor, setStatusColor] = useState('text-emerald-400');
   const [agentType, setAgentType] = useState<'general' | 'teacher' | 'coder' | 'planner' | 'research' | 'motivator'>('general');
   const [enableInternetSearch, setEnableInternetSearch] = useState(false);
   const [enableOllama, setEnableOllama] = useState(false);
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
   const [ollamaModel, setOllamaModel] = useState('llama3');
-  const [isSpeechAvailable, setIsSpeechAvailable] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [sysLogs, setSysLogs] = useState<string[]>(['[COGNITIVE HUB] Init sequence...', '[STARK CORE] Quantum security active.']);
 
   // Multimodal OCR Camera Vision state
   const [attachedImage, setAttachedImage] = useState<{ name: string; mimeType: string; data: string } | null>(null);
@@ -128,13 +124,6 @@ export default function Jarvis({
   // Core state storage refs
   const historyInputRef = useRef<any>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const recognitionRef = useRef<any>(null);
-
-  // Wake and voice active state control refs
-  const isUserEnabledVoiceRef = useRef<boolean>(false);
-  const isWaitingForCommandRef = useRef<boolean>(false);
-  const wakeTimeoutRef = useRef<any>(null);
-  const processVoiceInputRef = useRef<any>(null);
 
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     const saved = localStorage.getItem('jarvis_history_items');
@@ -152,11 +141,6 @@ export default function Jarvis({
     } catch {}
   }, [examCountdown]);
 
-  // Sync vocal processing reference
-  useEffect(() => {
-    processVoiceInputRef.current = processVoiceInput;
-  });
-
   // Sync stopwatch timer logic
   useEffect(() => {
     let stopwatch: any = null;
@@ -170,9 +154,9 @@ export default function Jarvis({
     return () => clearInterval(stopwatch);
   }, [studySessionActive]);
 
-  // Sync logs trigger outputs
+  // Sync logs trigger outputs (Mock implementation for notes and scheduling)
   const pushLog = (txt: string) => {
-    setSysLogs(prev => [`[${new Date().toLocaleTimeString()}] ${txt}`, ...prev.slice(0, 15)]);
+    console.log(txt);
   };
 
   // Fetch /api/memory on Mount to fully synchronize database
@@ -227,128 +211,6 @@ export default function Jarvis({
       pushLog(`Vision scanner appended attachment: ${file.name}`);
     };
     reader.readAsDataURL(file);
-  };
-
-  // Setup Continuous speech wake-word recognition structure
-  useEffect(() => {
-    const SpeechClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechClass) {
-      setIsSpeechAvailable(true);
-      const rec = new SpeechClass();
-      rec.continuous = true;
-      rec.interimResults = false;
-      rec.lang = 'en-US';
-
-      rec.onresult = (event: any) => {
-        const text = event.results[event.results.length - 1][0].transcript;
-        console.log('[JARVIS VOICE DETECTED]:', text);
-        if (processVoiceInputRef.current) {
-          processVoiceInputRef.current(text);
-        }
-      };
-
-      rec.onstart = () => {
-        setIsListening(true);
-        if (isWaitingForCommandRef.current) {
-          setStatusText('LISTENING FOR COMMAND...');
-          setStatusColor('text-purple-400');
-        } else {
-          setStatusText("IDLE - SAY 'HEY JARVIS'");
-          setStatusColor('text-sky-400');
-        }
-      };
-
-      rec.onend = () => {
-        setIsListening(false);
-        if (isUserEnabledVoiceRef.current) {
-          try {
-            rec.start();
-          } catch (e) {
-            console.warn('Continuous restart error:', e);
-          }
-        } else {
-          setStatusText('OFFLINE (MIC MUTED)');
-          setStatusColor('text-rose-450');
-        }
-      };
-
-      rec.onerror = (err: any) => {
-        console.warn('Speech recognition interface error:', err);
-        setIsListening(false);
-        if (isUserEnabledVoiceRef.current) {
-          setTimeout(() => {
-            if (isUserEnabledVoiceRef.current) {
-              try { rec.start(); } catch {}
-            }
-          }, 1000);
-        }
-      };
-
-      recognitionRef.current = rec;
-    }
-
-    return () => {
-      try {
-        recognitionRef.current?.stop();
-      } catch {}
-    };
-  }, []);
-
-  const speakNarrative = (msgText: string) => {
-    if ('speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(msgText.replace(/[*#`_\-]/g, ''));
-        utterance.rate = 1.05;
-        utterance.volume = 1.0;
-
-        try {
-          const voices = window.speechSynthesis.getVoices();
-          const preferredVoice = voices.find(v => 
-            v.name.includes('Google') || v.name.includes('Microsoft')
-          );
-          if (preferredVoice) utterance.voice = preferredVoice;
-        } catch {}
-
-        if (voiceModel === 'female') {
-          utterance.pitch = 1.15; // Friday voice representation
-        } else {
-          utterance.pitch = 0.95; // Jarvis voice representation
-        }
-
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-
-        window.speechSynthesis.speak(utterance);
-      } catch (e) {
-        console.warn('Vocal engine block:', e);
-        setIsSpeaking(false);
-      }
-    }
-  };
-
-  const playJarvisStartSound = () => {
-    try {
-      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtxClass();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(650, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1150, ctx.currentTime + 0.22);
-
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.32);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.32);
-    } catch (e) {
-      console.warn('Sound synthetics blocked:', e);
-    }
   };
 
   // Perform Gemini AI request proxy (with Agent selector, internet grounding option and Camera Vision)
@@ -436,7 +298,6 @@ export default function Jarvis({
       setMessages(prev => [...prev, botMsg]);
       // Clear OCR attachment after reading
       setAttachedImage(null);
-      speakNarrative(botReply);
 
     } catch (err: any) {
       console.error(err);
@@ -454,160 +315,34 @@ export default function Jarvis({
     }
   };
 
-  // Core Voice navigation intercepts
-  const handleVoiceCommand = (cmd: string): boolean => {
-    pushLog(`Voice syntax parse: "${cmd}"`);
-    if (cmd.includes('open jarvis')) {
-      speakNarrative('Opening cockpit dashboard console.');
-      setActiveTab('cockpit');
-      return true;
-    }
-    if (cmd.includes('open study') || cmd.includes('open quiz') || cmd.includes('math solver') || cmd.includes('chemistry solver') || cmd.includes('pcm list')) {
-      speakNarrative('Opening study coach solvers & interactive quiz module.');
-      setActiveTab('study');
-      return true;
-    }
-    if (cmd.includes('open schedules') || cmd.includes('open schedule') || cmd.includes('open calendar') || cmd.includes('open routine') || cmd.includes('open timetable')) {
-      speakNarrative('Loading schedule timers, board count-downs and daily timetables.');
-      setActiveTab('scheduler');
-      return true;
-    }
-    if (cmd.includes('open analytics') || cmd.includes('open chart') || cmd.includes('show report') || cmd.includes('open study hours')) {
-      speakNarrative('Displaying study chronometers, milestone achievements and report graphs.');
-      setActiveTab('analytics');
-      return true;
-    }
-    if (cmd.includes('open document ai') || cmd.includes('open note summarizer') || cmd.includes('open pdf')) {
-      speakNarrative('Activating text models, note summarized tools, and OCR extraction platforms.');
-      setActiveTab('docai');
-      return true;
-    }
-    if (cmd.includes('clear chat') || cmd.includes('new session') || cmd.includes('reset console')) {
-      setMessages([]);
-      speakNarrative('Command session wiped clean.');
-      return true;
-    }
-    return false;
-  };
-
-  const processVoiceInput = (rawText: string) => {
-    const text = rawText.toLowerCase().trim();
-    
-    // Waiting for direct input command
-    if (isWaitingForCommandRef.current) {
-      if (wakeTimeoutRef.current) clearTimeout(wakeTimeoutRef.current);
-      isWaitingForCommandRef.current = false;
-      setStatusText("IDLE - SAY 'HEY JARVIS'");
-      setStatusColor('text-sky-400');
-
-      const handled = handleVoiceCommand(text);
-      if (!handled) {
-        sendMessage(rawText);
-      }
-      return;
-    }
-
-    // Wake word validation
-    const lowercaseText = text.toLowerCase();
-    const wakeIndexCyan = lowercaseText.indexOf('hey jarvis');
-    const wakeIndexRed = lowercaseText.indexOf('hi jarvis');
-    
-    let wakeIndex = -1;
-    let wakeLength = 10;
-    if (wakeIndexCyan !== -1) {
-      wakeIndex = wakeIndexCyan;
-      wakeLength = 10;
-    } else if (wakeIndexRed !== -1) {
-      wakeIndex = wakeIndexRed;
-      wakeLength = 9;
-    }
-
-    if (wakeIndex !== -1) {
-      playJarvisStartSound();
-      speakNarrative("Yes Prince, I'm listening.");
-
-      const commandPart = text.substring(wakeIndex + wakeLength).trim();
-
-      if (commandPart.length > 0) {
-        setStatusText('EXECUTING COMMAND...');
-        setStatusColor('text-amber-400');
-        setTimeout(() => {
-          const handled = handleVoiceCommand(commandPart);
-          if (!handled) {
-            sendMessage(commandPart);
-          }
-          setStatusText("IDLE - SAY 'HEY JARVIS'");
-          setStatusColor('text-sky-400');
-        }, 1200);
-      } else {
-        isWaitingForCommandRef.current = true;
-        setStatusText('LISTENING FOR COMMAND...');
-        setStatusColor('text-purple-400');
-        
-        if (wakeTimeoutRef.current) clearTimeout(wakeTimeoutRef.current);
-        wakeTimeoutRef.current = setTimeout(() => {
-          if (isWaitingForCommandRef.current) {
-            isWaitingForCommandRef.current = false;
-            setStatusText("IDLE - SAY 'HEY JARVIS'");
-            setStatusColor('text-sky-400');
-            speakNarrative('Going standby.');
-          }
-        }, 8000);
-      }
-    }
-  };
-
-  const handleMicTrigger = () => {
-    if (!recognitionRef.current) return;
-    if (isListening || isUserEnabledVoiceRef.current) {
-      isUserEnabledVoiceRef.current = false;
-      isWaitingForCommandRef.current = false;
-      if (wakeTimeoutRef.current) clearTimeout(wakeTimeoutRef.current);
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-      speakNarrative('Voice subsystem standby.');
-      setStatusText('OFFLINE (MIC MUTED)');
-      setStatusColor('text-rose-450');
-      pushLog('Acoustic wake-engine deactivated.');
-    } else {
-      isUserEnabledVoiceRef.current = true;
-      isWaitingForCommandRef.current = false;
-      playJarvisStartSound();
-      speakNarrative('Jarvis voice system activated. Directives standby.');
-      setStatusText("IDLE - SAY 'HEY JARVIS'");
-      setStatusColor('text-sky-400');
-      pushLog('Mic listening activated. Say "Hey Jarvis" to command.');
-      try {
-        recognitionRef.current.start();
-      } catch {}
-    }
-  };
-
-  const exportChatHistory = () => {
+  const exportChatHistoryTxt = () => {
     try {
-      const dataStr = JSON.stringify(messages, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
+      const textContent = messages.map(m => `[${m.role.toUpperCase()}]\n${m.content}\n`).join('\n---\n\n');
+      const blob = new Blob([textContent], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `jarvis_chat_history_${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `jarvis_omega_x_chat_${new Date().toISOString().slice(0, 10)}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      pushLog('Chat history exported successfully.');
+      pushLog('Chat history exported as TXT successfully.');
     } catch (e) {
       console.error('Error exporting chat history:', e);
       pushLog('Failed to export chat logs.');
     }
   };
 
+  const exportChatHistoryPdf = () => {
+    window.print();
+    pushLog('Opened print dialog for PDF export.');
+  };
+
   // 5. AI Study Coach solver templates trigger macro
   const runStudySolverTemplate = (subject: string, question: string) => {
     setInputVal(`Act as my study agent. Run analysis on this ${subject} question and provide step-by-step derivational proofs:\n"${question}"`);
     setActiveTab('cockpit');
-    speakNarrative(`Loading ${subject} cognitive solvers template, hit send to analyze, Prince.`);
   };
 
   // Dynamic MCQ Generator triggered locally (no third-party quiz dependencies)
@@ -651,7 +386,6 @@ export default function Jarvis({
     setCurrentQuizIdx(0);
     setQuizScore(0);
     setQuizFeedback(null);
-    speakNarrative('Let us test PCM metrics Prince, select correct choices to verify knowledge.');
   };
 
   const submitQuizChoice = (idx: number) => {
@@ -673,7 +407,6 @@ export default function Jarvis({
       setQuizActive(false);
       const totalXPBonus = quizScore * 50;
       pushLog(`Study Quiz finalized. Gained +${totalXPBonus} Focus XP.`);
-      speakNarrative(`Excellent session Prince. You secured ${quizScore} out of 5 points, awarding you ${totalXPBonus} focus experience points.`);
       alert(`📚 QUIZ METRICS COMPLETE!\nScore: ${quizScore}/5\nReward: +${totalXPBonus} XP has been bestowed to Prince!`);
     }
   };
@@ -712,7 +445,6 @@ export default function Jarvis({
     setInputVal('Generate an optimal, highly productive 24-hour study schedule block designed specifically to balance PCM board study, logic coding drills, short exercises and healthy sleep cycles.');
     setActiveTab('cockpit');
     setAgentType('planner');
-    speakNarrative('Optimizing study coordinates. Hit send to compile scheduler routines.');
   };
 
   const addReminder = (text: string, time: string) => {
@@ -738,7 +470,6 @@ export default function Jarvis({
       if (diff < 0) diff += 24 * 60 * 60 * 1000; // tomorrow
       
       setTimeout(() => {
-        speakNarrative(`Sir, crucial reminder parameter triggered: ${text}`);
         alert(`🔔 JARVIS ALERT: ${text}`);
       }, Math.min(diff, 60000)); // cap simulated alert test to 60s
     } catch {}
@@ -767,14 +498,12 @@ export default function Jarvis({
 
       // Notify completion
       pushLog(`Stopwatch locked. Focused minutes: ${minsStudied}. Gained +${xpEarned} analytical XP.`);
-      speakNarrative(`Session terminated Prince. You focus-trained for ${minsStudied} minutes, rewarding you ${xpEarned} focus parameters.`);
       alert(`⏱️ CHRONO STUDY TARGET REPORT:\nDuration: ${minsStudied} min\nReward: +${xpEarned} XP applied.`);
       setStudySessionActive(false);
       setStudySecondsElapsed(0);
     } else {
       setStudySessionActive(true);
       setStudySecondsElapsed(0);
-      speakNarrative('Chronometer activated, Sir. Focus block is now live.');
       pushLog('Study timer activated.');
     }
   };
@@ -821,7 +550,6 @@ export default function Jarvis({
       setDocSummaryOutput(data.text);
       setDocSummaryLoading(false);
       pushLog('Note compilation complete.');
-      speakNarrative('Reference analysis completed Prince, displaying synthesized material logs.');
     } catch (err: any) {
       console.error(err);
       setDocSummaryLoading(false);
@@ -830,37 +558,33 @@ export default function Jarvis({
   };
 
   const getDynamicStatusIndicator = () => {
-    if (isSpeaking) return "🔊 Speaking";
-    if (isThinking) return "🧠 Thinking";
-    if (isWaitingForCommandRef.current) return "🎤 Listening";
-    if (isListening) return "🟢 Standby"; // Continuously Listening Wake Word active
-    if (!isUserEnabledVoiceRef.current) return "🔴 Offline";
-    return "🟢 Standby";
+    if (isThinking) return "🧠 AI IS TYPING...";
+    return "🟢 ONLINE";
   };
 
   return (
-    <div className="h-[84vh] flex flex-col md:flex-row bg-[#020512] border border-slate-800/90 rounded-3xl overflow-hidden shadow-2xl relative font-sans text-slate-350">
+    <div className="h-[84vh] flex flex-col md:flex-row bg-[#020512]/60 backdrop-blur-2xl border border-purple-500/30 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.1)] relative font-sans text-slate-350">
       
       {/* Dynamic Cyber Tech Sidebar and Controls layout */}
-      <div className="w-full md:w-72 bg-gradient-to-b from-slate-950/95 to-slate-900/90 border-r border-slate-800/80 p-5 flex flex-col justify-between">
+      <div className="w-full md:w-72 bg-gradient-to-b from-slate-950/80 to-slate-900/60 backdrop-blur-xl border-r border-purple-500/20 p-5 flex flex-col justify-between relative z-20">
         <div className="space-y-4">
           
-          {/* Iron Man Reactor Glow Brand logo */}
+          {/* Branding logo */}
           <div className="flex items-center gap-3 border-b border-slate-800/60 pb-3 relative">
             <div className={`w-12 h-12 rounded-full border flex items-center justify-center relative group transition-all duration-300 ${
               selectedTheme === 'cyan' ? 'border-sky-500/50 bg-sky-950/20 text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.3)]' :
               selectedTheme === 'red' ? 'border-rose-500/50 bg-rose-950/20 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]' :
+              selectedTheme === 'gold' ? 'border-amber-500/50 bg-amber-950/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]' :
               'border-violet-500/50 bg-violet-950/20 text-violet-400 shadow-[0_0_15px_rgba(139,92,246,0.3)]'
             }`}>
-              <div className="absolute inset-1 rounded-full border border-dashed border-current opacity-60 animate-spin-slow duration-10000" />
-              <Layers className="w-5 h-5 animate-pulse" />
+              <Bot className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-black text-sm tracking-widest uppercase text-white font-mono flex items-center gap-1">
-                JARVIS <span className="text-[10px] text-sky-400 font-extrabold px-1.5 py-0.5 bg-sky-500/10 rounded-md">X</span>
+              <h2 className="font-black text-sm tracking-widest uppercase text-white font-sans flex items-center gap-1">
+                AI ASSISTANT
               </h2>
               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 font-mono">
-                AI OPERATING SYSTEM
+                TEXT CHAT SYSTEM
               </p>
             </div>
           </div>
@@ -875,7 +599,7 @@ export default function Jarvis({
                   : 'text-slate-400 border border-transparent hover:bg-slate-900 status-cell'
               }`}
             >
-              <Cpu className="w-4 h-4" /> CMD Cockpit
+              <Cpu className="w-4 h-4" /> AI Chat
             </button>
 
             <button
@@ -923,62 +647,21 @@ export default function Jarvis({
             </button>
           </div>
 
-          {/* Wake Word trigger micro widget */}
-          <div className="p-3 bg-slate-950/45 border border-slate-800/80 rounded-2xl relative overflow-hidden">
-            <div className="flex items-center justify-between mb-1.5 select-none">
-              <span className="text-[9px] font-bold font-mono tracking-widest text-slate-500 uppercase">
-                Acoustic Voice Wake
-              </span>
-              <span className={`h-1.5 w-1.5 rounded-full ${isListening ? 'bg-sky-400 animate-ping' : 'bg-rose-500'}`} />
-            </div>
-            <button
-              id="voice-wake-trigger-btn"
-              onClick={handleMicTrigger}
-              className={`w-full py-2 px-3 rounded-xl font-mono text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${
-                isListening
-                  ? 'bg-rose-500/15 border border-rose-500/35 text-rose-400 hover:bg-rose-500/20'
-                  : 'bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300'
-              }`}
-            >
-              {isListening ? "🎙️ CONTINUOUS ACTIVE (HEY JARVIS)" : "🔇 MUTED - IGNITE MIC"}
-            </button>
-          </div>
-
-        </div>
-
-        {/* Console logs ticker element */}
-        <div className="space-y-2.5 border-t border-slate-800/80 pt-3">
-          <div className="flex justify-between text-[9px] font-mono tracking-widest text-slate-500 font-bold uppercase select-none">
-            <span>OS Core Logs</span>
-            <span className="text-[8px] text-sky-500">v10.5.2</span>
-          </div>
-          <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850 h-28 overflow-y-auto no-scrollbar font-mono text-[9px] text-[#bc9eff60] space-y-1">
-            {sysLogs.map((log, lidx) => (
-              <div key={lidx} className="truncate select-none">{log}</div>
-            ))}
-          </div>
-
           {/* Quick theme toggles */}
-          <div className="flex items-center justify-between gap-2.5 pt-1.5">
+          <div className="pt-3 border-t border-slate-800/80">
             <select
               value={selectedTheme}
               onChange={(e) => onChangeTheme(e.target.value as any)}
-              className="flex-1 h-7 border border-slate-850 rounded-lg bg-slate-950 text-slate-400 text-[10px] px-1.5 outline-none cursor-pointer focus:border-sky-500 font-mono uppercase font-bold"
+              className="w-full h-7 border border-slate-850 rounded-lg bg-slate-950 text-slate-400 text-[10px] px-1.5 outline-none cursor-pointer focus:border-sky-500 font-mono uppercase font-bold"
             >
               <option value="cyan">Cyber Cyan</option>
               <option value="red">Stark Red</option>
               <option value="purple">Quantum Violet</option>
-            </select>
-            <select
-              value={voiceModel}
-              onChange={(e) => setVoiceModel(e.target.value as any)}
-              className="flex-1 h-7 border border-slate-850 rounded-lg bg-slate-950 text-slate-400 text-[10px] px-1.5 outline-none cursor-pointer focus:border-sky-500 font-mono uppercase font-bold"
-            >
-              <option value="male">Jarvis Male</option>
-              <option value="female">Friday Fem</option>
+              <option value="gold">Omega Gold</option>
             </select>
           </div>
         </div>
+
       </div>
 
       {/* Primary HUD Viewports container */}
@@ -989,22 +672,30 @@ export default function Jarvis({
           <div className="flex items-center gap-2.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-mono font-black text-slate-400 tracking-widest uppercase">
-              JARVIS COCKPIT ENGINE // STATUS: {getDynamicStatusIndicator()}
+              AI ASSISTANT // STATUS: {getDynamicStatusIndicator()}
             </span>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
             <button
-              onClick={exportChatHistory}
+              onClick={exportChatHistoryTxt}
               className="p-1 px-2.5 rounded-md border border-slate-800 text-[9px] font-mono text-slate-400 font-bold hover:border-sky-500/40 hover:text-sky-400 transition-all uppercase cursor-pointer"
-              title="Export chat history as JSON"
+              title="Export chat history as TXT"
             >
-              Export
+              Export TXT
+            </button>
+            <button
+              onClick={exportChatHistoryPdf}
+              className="p-1 px-2.5 rounded-md border border-slate-800 text-[9px] font-mono text-slate-400 font-bold hover:border-purple-500/40 hover:text-purple-400 transition-all uppercase cursor-pointer"
+              title="Export chat history as PDF"
+            >
+              Export PDF
             </button>
             <button
               onClick={() => setMessages([])}
-              className="p-1 px-2.5 rounded-md border border-slate-800 text-[9px] font-mono text-slate-400 font-bold hover:border-rose-500/40 hover:text-rose-400 transition-all uppercase cursor-pointer"
+              className="p-1 px-2.5 rounded-md border border-slate-800 text-[9px] font-mono text-slate-400 font-bold hover:border-emerald-500/40 hover:text-emerald-400 transition-all uppercase cursor-pointer"
+              title="Start a new chat session"
             >
-              Wipe Chat Logs
+              New Chat
             </button>
           </div>
         </div>
@@ -1028,7 +719,6 @@ export default function Jarvis({
                     value={agentType}
                     onChange={(e) => {
                       setAgentType(e.target.value as any);
-                      speakNarrative(`Coupling standard neural parameters into ${e.target.value} agent structures.`);
                       pushLog(`Activated Multi-Agent Module: ${e.target.value}`);
                     }}
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg text-white font-mono text-[11px] h-7 px-1.5 outline-none cursor-pointer focus:border-sky-500"
@@ -1056,7 +746,6 @@ export default function Jarvis({
                     onChange={(e) => {
                       setEnableInternetSearch(e.target.checked);
                       pushLog(`Google Search Grounded: ${e.target.checked ? 'ENABLED' : 'DISABLED'}`);
-                      speakNarrative(`Real time internet search grounding parameter modified, Sir.`);
                     }}
                     className="w-4 h-4 rounded border-slate-800 bg-slate-950 accent-sky-500 cursor-pointer"
                   />
@@ -1113,11 +802,11 @@ export default function Jarvis({
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-white uppercase tracking-widest font-mono">
-                        AWAITING INSTRUCTIONS PRINCE
+                      <h3 className="text-sm font-black text-white uppercase tracking-widest font-sans">
+                        HOW CAN I HELP YOU TODAY?
                       </h3>
-                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1.5 uppercase font-mono">
-                        "Your command is my core directive." Select PCM solvers from the menus, upload screenshots for active Camera Vision scanner, or activate mic word wakener "Hey Jarvis" to automate routines.
+                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1.5 font-sans">
+                        Type a message to start chatting or use the tools on the left.
                       </p>
                     </div>
                   </div>
@@ -1144,16 +833,12 @@ export default function Jarvis({
                               ? 'bg-slate-950/60 border-slate-850 text-slate-200' 
                               : 'bg-sky-500 text-slate-950 font-medium border-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.1)]'
                           }`}>
-                            <p className="whitespace-pre-wrap">{m.content}</p>
-                            
-                            {/* Option to vocalize bot text */}
-                            {isAssistant && (
-                              <button
-                                onClick={() => speakNarrative(m.content)}
-                                className="mt-2.5 text-[9px] font-mono text-slate-500 hover:text-sky-400 flex items-center gap-1 uppercase font-bold tracking-widest float-right transition-colors cursor-pointer"
-                              >
-                                <Volume2 className="w-3.5 h-3.5" /> Vocalize Response
-                              </button>
+                            {isAssistant ? (
+                              <div className="markdown-body text-sm space-y-2 prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800 prose-code:text-sky-300">
+                                <Markdown remarkPlugins={[remarkGfm]}>{m.content}</Markdown>
+                              </div>
+                            ) : (
+                              <p className="whitespace-pre-wrap">{m.content}</p>
                             )}
                           </div>
                         </div>
@@ -1229,23 +914,10 @@ export default function Jarvis({
                     type="text"
                     value={inputVal}
                     onChange={(e) => setInputVal(e.target.value)}
-                    placeholder="Ask command or say 'Hey Jarvis'..."
+                    placeholder="Type a message..."
                     className="flex-1 bg-slate-900 border border-slate-850 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-sky-500 font-sans outline-none"
                     disabled={isThinking}
                   />
-
-                  <button
-                    type="button"
-                    onClick={handleMicTrigger}
-                    className={`p-2.5 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center ${
-                      isListening
-                        ? 'bg-rose-500/15 border border-rose-500/35 text-rose-400 hover:bg-rose-500/20'
-                        : 'bg-slate-900 border border-slate-850 hover:bg-slate-800 text-slate-300'
-                    }`}
-                    title={isListening ? "Mute Microphone" : "Activate Voice Command"}
-                  >
-                    {isListening ? <Mic className="w-4 h-4 animate-pulse" /> : <MicOff className="w-4 h-4" />}
-                  </button>
 
                   <button
                     type="submit"
