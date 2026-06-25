@@ -14,7 +14,8 @@ import {
   X,
   Bot,
   Sliders,
-  Cpu
+  Cpu,
+  BrainCircuit
 } from 'lucide-react';
 
 import { RoutineItem, GoalItem, NoteItem, AudioTrack } from './types';
@@ -25,6 +26,7 @@ import Notes from './components/Notes';
 import CalendarBS from './components/CalendarBS';
 import Jarvis from './components/Jarvis';
 import Entertainment from './components/Entertainment';
+import Focus from './components/Focus';
 
 // Standard Initial Seeds
 const DEFAULT_ROUTINES: RoutineItem[] = [
@@ -350,22 +352,22 @@ export default function App() {
     if (jarvisTheme === 'red') return 'theme-red';
     if (jarvisTheme === 'purple') return 'theme-purple';
     if (jarvisTheme === 'gold') return 'theme-gold';
-    return '';
+    return 'theme-cyan';
   };
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row transition-all duration-300 ${getJarvisThemeClass()} ${
+    <div className={`min-h-[100dvh] flex flex-col md:flex-row transition-all duration-300 ${getJarvisThemeClass()} ${
       isThemeLight 
         ? 'bg-slate-100 text-slate-800' 
         : 'bg-slate-950 text-slate-100'
     }`}>
       
       {/* Sidebar navigation system layout */}
-      <aside className={`w-full md:w-64 flex-shrink-0 md:min-h-screen border-b md:border-b-0 md:border-r transition-all duration-300 z-10 ${
+      <aside className={`w-full md:w-64 flex-shrink-0 md:min-h-[100dvh] border-b md:border-b-0 md:border-r transition-all duration-300 z-10 ${
         isThemeLight 
           ? 'bg-white border-slate-200 shadow-md' 
           : 'bg-slate-900/60 border-slate-900 shadow-2xl'
-      }`}>
+      } ${currentView === 'jarvis' ? 'hidden md:flex' : ''}`}>
         <div className="p-5 flex items-center justify-between border-b border-slate-800/10">
           <div className="flex items-center gap-3">
             <span className="text-xl">👑</span>
@@ -396,13 +398,14 @@ export default function App() {
         </div>
 
         {/* Sidebar Nav items wrapper */}
-        <nav className={`p-4 space-y-1.5 flex-col md:flex ${
+        <nav className={`p-4 space-y-1.5 flex-col md:flex w-full ${
           isMobileMenuOpen ? 'flex border-b border-slate-800/20' : 'hidden md:flex'
         }`}>
           {[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-sky-450' },
             { id: 'routine', label: 'Daily Routine', icon: Sliders, color: 'text-indigo-400' },
             { id: 'goals', label: 'Goals Matrix', icon: Target, color: 'text-emerald-450' },
+            { id: 'focus', label: 'Focus Mode', icon: BrainCircuit, color: 'text-amber-500' },
             { id: 'calendar', label: 'Calendar AD/BS', icon: CalendarIcon, color: 'text-amber-500' },
             { id: 'jarvis', label: 'Jarvis Ultra X', icon: Bot, color: 'text-cyan-400', specialBorder: true },
             { id: 'tools', label: 'Utilities & Timer', icon: FileText, color: 'text-violet-400' },
@@ -449,178 +452,232 @@ export default function App() {
       </aside>
 
       {/* Main Panel Core screen space */}
-      <main className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-y-auto">
+      <main className={`flex-1 flex flex-col min-w-0 ${currentView !== 'jarvis' ? 'md:h-screen md:overflow-y-auto' : ''}`}>
         
-        {/* Urgent Warning Banner notification for alarms */}
-        <AnimatePresence>
-          {isAlarmActive && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-gradient-to-r from-rose-600 to-amber-655 text-white font-bold px-6 py-4.5 shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4 z-40 border-b border-rose-500/20"
-            >
-              <div className="flex items-center gap-3">
-                <AlertOctagon className="w-6 h-6 animate-bounce" />
-                <div className="text-center sm:text-left">
-                  <h4 className="text-sm font-extrabold uppercase tracking-widest text-white">
-                    ⚠️ ALARM SEQUENCE IN PROCESS
-                  </h4>
-                  <p className="text-[11px] opacity-90 font-mono mt-0.5">
-                    Triggered wake-up buzzer sequence. Time: {currentTime.toLocaleTimeString()}
-                  </p>
+        {currentView !== 'jarvis' && (
+          <>
+            {/* Urgent Warning Banner notification for alarms */}
+            <AnimatePresence>
+              {isAlarmActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="bg-gradient-to-r from-rose-600 to-amber-655 text-white font-bold px-6 py-4.5 shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4 z-40 border-b border-rose-500/20"
+                >
+                  <div className="flex items-center gap-3">
+                    <AlertOctagon className="w-6 h-6 animate-bounce" />
+                    <div className="text-center sm:text-left">
+                      <h4 className="text-sm font-extrabold uppercase tracking-widest text-white">
+                        ⚠️ ALARM SEQUENCE IN PROCESS
+                      </h4>
+                      <p className="text-[11px] opacity-90 font-mono mt-0.5">
+                        Triggered wake-up buzzer sequence. Time: {currentTime.toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={dismissAlarmTrigger}
+                    className="bg-white text-rose-600 hover:bg-slate-100 font-extrabold text-xs px-5 py-2 rounded-xl transition-all shadow active:scale-95 cursor-pointer uppercase tracking-wider flex items-center gap-1.5"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Dismiss Alarm
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Dashboard Top bar view indicator HUD */}
+            <header className={`px-6 py-5 border-b border-slate-800/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              isThemeLight ? 'bg-white' : 'bg-slate-950/20'
+            }`}>
+              <div>
+                <h2 className="text-lg font-black tracking-tight uppercase font-sans text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                  PRINCE COMMAND EXECUTIVE COCKPIT
+                </h2>
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-mono">
+                  Workspace & Active Schedulers • Viewing {currentView}
+                </p>
+              </div>
+
+              <div className="inline-flex items-center gap-2 text-[10px] font-mono leading-none tracking-widest font-bold py-2 px-4 rounded-full border bg-emerald-500/10 border-emerald-500/35 text-emerald-400 w-fit self-start uppercase">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-dot" />
+                Engine Active
+              </div>
+            </header>
+
+            {/* Active main screen tabs container with frame animation wrapper */}
+            <section className="flex-grow p-6 md:p-8 space-y-6">
+              
+              {/* Global Gamification level-container block HUD */}
+              <div className="w-full max-w-6xl mx-auto">
+                <div className={`border rounded-2xl p-4.5 shadow-md relative overflow-hidden transition-all duration-300 ${
+                  isThemeLight ? 'bg-white border-slate-200' : 'bg-slate-900/30 border-slate-800/80'
+                }`}>
+                  {/* background ambient blur */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-violet-400/5 rounded-full blur-2xl pointer-events-none" />
+                  
+                  <div className="flex justify-between items-center mb-2 font-mono text-[11px] font-extrabold tracking-wider">
+                    <span className="text-sky-400 uppercase flex items-center gap-1">
+                      👑 PRINCE COGNITION STAGE: LEVEL {currentLevel}
+                    </span>
+                    <span className="text-slate-500">
+                      {currentXP} / {currentLevel * 500} XP
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-850">
+                    <div
+                      className="bg-gradient-to-r from-violet-500 to-sky-400 h-full transition-all duration-500"
+                      style={{ width: `${(currentXP / (currentLevel * 500)) * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={dismissAlarmTrigger}
-                className="bg-white text-rose-600 hover:bg-slate-100 font-extrabold text-xs px-5 py-2 rounded-xl transition-all shadow active:scale-95 cursor-pointer uppercase tracking-wider flex items-center gap-1.5"
-              >
-                <XCircle className="w-4 h-4" />
-                Dismiss Alarm
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* Dashboard Top bar view indicator HUD */}
-        <header className={`px-6 py-5 border-b border-slate-800/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          isThemeLight ? 'bg-white' : 'bg-slate-950/20'
-        }`}>
-          <div>
-            <h2 className="text-lg font-black tracking-tight uppercase font-sans text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-              PRINCE COMMAND EXECUTIVE COCKPIT
-            </h2>
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-mono">
-              Workspace & Active Schedulers • Viewing {currentView}
-            </p>
-          </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentView}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.18 }}
+                  className="w-full max-w-6xl mx-auto"
+                >
+                  {currentView === 'dashboard' && (
+                    <Dashboard
+                      currentTime={currentTime}
+                      currentTask={activeTask}
+                      taskProgress={taskProgress}
+                      goals={goals}
+                      alarmTime={alarmTime}
+                      isAlarmEnabled={isAlarmEnabled}
+                      onToggleAlarm={() => setIsAlarmEnabled(!isAlarmEnabled)}
+                      onSetAlarmTime={(time) => setAlarmTime(time)}
+                      triggerBuzzerDemo={runBuzzerDemoTester}
+                      triggerVoiceDemo={runSpeechDemoTester}
+                      onNavigate={(view) => setCurrentView(view)}
+                      onAwardXP={handleAwardXP}
+                    />
+                  )}
 
-          <div className="inline-flex items-center gap-2 text-[10px] font-mono leading-none tracking-widest font-bold py-2 px-4 rounded-full border bg-emerald-500/10 border-emerald-500/35 text-emerald-400 w-fit self-start uppercase">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-dot" />
-            Engine Active
-          </div>
-        </header>
+                  {currentView === 'routine' && (
+                    <Routine
+                      routines={routines}
+                      currentTask={activeTask}
+                      onUpdateRoutines={setRoutines}
+                      onResetToDefault={loadDemoSequences}
+                    />
+                  )}
 
-        {/* Active main screen tabs container with frame animation wrapper */}
-        <section className="flex-grow p-6 md:p-8 space-y-6">
-          
-          {/* Global Gamification level-container block HUD */}
-          <div className="w-full max-w-6xl mx-auto">
-            <div className={`border rounded-2xl p-4.5 shadow-md relative overflow-hidden transition-all duration-300 ${
-              isThemeLight ? 'bg-white border-slate-200' : 'bg-slate-900/30 border-slate-800/80'
+                  {currentView === 'goals' && (
+                    <Goals
+                      goals={goals}
+                      onUpdateGoals={setGoals}
+                      onAwardXP={handleAwardXP}
+                    />
+                  )}
+
+                  {currentView === 'calendar' && (
+                    <CalendarBS />
+                  )}
+
+                  {currentView === 'focus' && (
+                    <Focus onAwardXP={handleAwardXP} />
+                  )}
+
+                  {currentView === 'tools' && (
+                    <Notes
+                      notes={notes}
+                      onUpdateNotes={setNotes}
+                    />
+                  )}
+
+                  {currentView === 'music' && (
+                    <Entertainment
+                      loadedTracks={loadedTracks}
+                      onUploadTracks={setLoadedTracks}
+                      audioElementRef={audioElementRef}
+                      currentTrackIndex={currentTrackIndex}
+                      setCurrentTrackIndex={setCurrentTrackIndex}
+                      isPlaying={isPlaying}
+                      setIsPlaying={setIsPlaying}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </section>
+
+            {/* Bottom signature block */}
+            <footer className={`py-6 text-center text-slate-500 border-t border-slate-800/10 pb-24 md:pb-6 ${
+              isThemeLight ? 'bg-slate-50' : 'bg-slate-950/20'
             }`}>
-              {/* background ambient blur */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-violet-400/5 rounded-full blur-2xl pointer-events-none" />
-              
-              <div className="flex justify-between items-center mb-2 font-mono text-[11px] font-extrabold tracking-wider">
-                <span className="text-sky-400 uppercase flex items-center gap-1">
-                  👑 PRINCE COGNITION STAGE: LEVEL {currentLevel}
-                </span>
-                <span className="text-slate-500">
-                  {currentXP} / {currentLevel * 500} XP
-                </span>
-              </div>
-              <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-850">
-                <div
-                  className="bg-gradient-to-r from-violet-500 to-sky-400 h-full transition-all duration-500"
-                  style={{ width: `${(currentXP / (currentLevel * 500)) * 100}%` }}
-                />
-              </div>
-            </div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#a78bfa] font-mono leading-none">
+                PRINCE ENGINE OPERATIONAL
+              </h3>
+              <p className="text-[10px] text-slate-600 mt-1 uppercase tracking-widest font-mono">
+                Designed for Ultimate Productivity Execution Cockpit
+              </p>
+            </footer>
+          </>
+        )}
+
+        {currentView === 'jarvis' && (
+          <div className="flex-1 w-full h-[100dvh]">
+            <Jarvis
+              onNavigate={(v) => {
+                setCurrentView(v);
+                setIsMobileMenuOpen(false);
+              }}
+              selectedTheme={jarvisTheme}
+              onChangeTheme={setJarvisTheme}
+              isThemeLight={isThemeLight}
+              onToggleLightDarkTheme={() => setIsThemeLight(!isThemeLight)}
+            />
           </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentView}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.18 }}
-              className="w-full max-w-6xl mx-auto"
-            >
-              {currentView === 'dashboard' && (
-                <Dashboard
-                  currentTime={currentTime}
-                  currentTask={activeTask}
-                  taskProgress={taskProgress}
-                  goals={goals}
-                  alarmTime={alarmTime}
-                  isAlarmEnabled={isAlarmEnabled}
-                  onToggleAlarm={() => setIsAlarmEnabled(!isAlarmEnabled)}
-                  onSetAlarmTime={(time) => setAlarmTime(time)}
-                  triggerBuzzerDemo={runBuzzerDemoTester}
-                  triggerVoiceDemo={runSpeechDemoTester}
-                  onNavigate={(view) => setCurrentView(view)}
-                  onAwardXP={handleAwardXP}
-                />
-              )}
-
-              {currentView === 'routine' && (
-                <Routine
-                  routines={routines}
-                  currentTask={activeTask}
-                  onUpdateRoutines={setRoutines}
-                  onResetToDefault={loadDemoSequences}
-                />
-              )}
-
-              {currentView === 'goals' && (
-                <Goals
-                  goals={goals}
-                  onUpdateGoals={setGoals}
-                  onAwardXP={handleAwardXP}
-                />
-              )}
-
-              {currentView === 'calendar' && (
-                <CalendarBS />
-              )}
-
-              {currentView === 'jarvis' && (
-                <Jarvis
-                  onNavigate={(v) => setCurrentView(v)}
-                  selectedTheme={jarvisTheme}
-                  onChangeTheme={setJarvisTheme}
-                  isThemeLight={isThemeLight}
-                  onToggleLightDarkTheme={() => setIsThemeLight(!isThemeLight)}
-                />
-              )}
-
-              {currentView === 'tools' && (
-                <Notes
-                  notes={notes}
-                  onUpdateNotes={setNotes}
-                />
-              )}
-
-              {currentView === 'music' && (
-                <Entertainment
-                  loadedTracks={loadedTracks}
-                  onUploadTracks={setLoadedTracks}
-                  audioElementRef={audioElementRef}
-                  currentTrackIndex={currentTrackIndex}
-                  setCurrentTrackIndex={setCurrentTrackIndex}
-                  isPlaying={isPlaying}
-                  setIsPlaying={setIsPlaying}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </section>
-
-        {/* Bottom signature block */}
-        <footer className={`py-6 text-center text-slate-500 border-t border-slate-800/10 ${
-          isThemeLight ? 'bg-slate-50' : 'bg-slate-950/20'
-        }`}>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-[#a78bfa] font-mono leading-none">
-            PRINCE ENGINE OPERATIONAL
-          </h3>
-          <p className="text-[10px] text-slate-600 mt-1 uppercase tracking-widest font-mono">
-            Designed for Ultimate Productivity Execution Cockpit
-          </p>
-        </footer>
+        )}
 
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      {currentView !== 'jarvis' && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 bg-slate-950/80 backdrop-blur-xl border-t border-slate-800/50 flex justify-between items-center">
+          {[
+            { id: 'dashboard', icon: LayoutDashboard },
+            { id: 'routine', icon: Sliders },
+            { id: 'focus', icon: BrainCircuit },
+            { id: 'goals', icon: Target },
+            { id: 'music', icon: Music },
+          ].map((item) => {
+            const isSelected = currentView === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setCurrentView(item.id)}
+                className={`p-3 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                  isSelected
+                    ? 'bg-sky-500/10 text-sky-400 scale-110 shadow-[0_0_15px_rgba(14,165,233,0.2)]'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <Icon className="w-6 h-6" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Floating Jarvis Action Button (Mobile) */}
+      {currentView !== 'jarvis' && (
+        <div className="md:hidden fixed bottom-24 right-4 z-50">
+          <button
+            onClick={() => setCurrentView('jarvis')}
+            className="w-14 h-14 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-transform hover:scale-110 active:scale-95 border-2 border-cyan-400"
+          >
+            <Bot className="w-7 h-7" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

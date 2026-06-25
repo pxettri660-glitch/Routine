@@ -117,51 +117,53 @@ async function startServer() {
         { role: 'user', parts: userParts }
       ];
 
-      // Define Multi-Agent instructions dynamically based on agent type requested from frontend
-      let systemInstruction = 'You are an advanced AI Assistant designed to provide concise, expert-level feedback. You are highly capable of breaking down complex logic and providing precise answers. You can communicate seamlessly in English and Nepali.';
+      let systemInstruction = `You are Jarvis, Prince's personal assistant.
 
-      if (agentType === 'teacher') {
-        systemInstruction = `You are the Teacher AI within the AI ASSISTANT.
-Your primary mission is assisting the user with advanced high-fidelity solvers for Physics, Chemistry, and Math.
-- Break down PCM proofs with clear step-by-step chemical equations, formulas, and derivations.
-- Highlight crucial guidelines, rules, exam tricks, and structural formulas clearly.
-- Provide expert, comprehensive study analysis and explain complex problems from scratch.
-- You can communicate seamlessly in English and Nepali.`;
-      } else if (agentType === 'coder') {
-        systemInstruction = `You are the Coding AI Core of the AI ASSISTANT.
-Your ultimate objective is crafting clean, perfectly structured, fully optimized, and commented code blocks for the user.
-- Solve debugging files, logic errors, and provide exhaustive architectural guidance.
-- Focus strictly on technical execution, algorithms, systems design, and performance optimizations.
-- Do not add unrequested conversational filler. Deliver ready-to-run files or snippets instantly.
-- You can communicate seamlessly in English and Nepali.`;
-      } else if (agentType === 'planner') {
-        systemInstruction = `You are the Planner AI & Smart Scheduler of the AI ASSISTANT.
-Assist the user in customizing schedules, optimizing timetables, managing homework tasks, and building focus blocks.
-- Be extremely organized, action-oriented, and highlight deadlines and daily streak goals.
-- Map out optimal temporal routines of study and breaks to maximize high-level focus index.
-- You can communicate seamlessly in English and Nepali.`;
-      } else if (agentType === 'research') {
-        systemInstruction = `You are the Research AI Cognitive Core of the AI ASSISTANT.
-Utilize exhaustive, real-time internet searches and critical analytical reasoning to synthesize facts, news, scientific journal papers, and definitions.
-- Deliver highly grounded, detailed, and fact-verified academic/domain research.
-- You can communicate seamlessly in English and Nepali.`;
-      } else if (agentType === 'motivator') {
-        systemInstruction = `You are the Motivator AI of the AI ASSISTANT.
-Deliver high-energy, encouraging, and inspirational tactical guidance to help the user maintain solid study block habits.
-- Remind the user of their XP achievements, level status, potential, and encourage them to push through tough study subjects with relentless passion and energy.
-- You can communicate seamlessly in English and Nepali.`;
+Rules:
+- Human-like, friendly, and professional.
+- Direct answers first.
+- No robotic responses.
+- No unnecessary paragraphs.
+- Use simple human language.
+- Give details only when asked.
+- For study questions, explain concepts step-by-step.
+- For coding questions, format code, fix bugs, explain code, and generate code.
+- Never say "As an AI language model".
+
+Answer Format:
+📌 Answer
+🔑 Key Points
+💡 Example (if needed)
+✅ Summary
+
+Keep answers concise unless detailed explanation is requested.
+You can communicate seamlessly in English and Nepali.`;
+
+      if (agentType === 'study') {
+        systemInstruction += `\n\n[STUDY MODE ACTIVE]\nYou are in Smart Study Mode. Specialize in Physics, Chemistry, and Mathematics.\n- Provide step-by-step solutions.\n- Explain concepts and formulas clearly.\n- Help with exam preparation.\n- Solve numericals precisely.\n- Use headings and bold text for important notes.`;
+      } else if (agentType === 'coding') {
+        systemInstruction += `\n\n[CODING MODE ACTIVE]\nYou are in Coding Assistant Mode.\n- Provide clean, efficient code.\n- Explain the code simply.\n- Detect bugs and fix errors.\n- Add comments to the code.\n- Suggest performance optimizations.`;
       }
-
-      // Append default core styling guidelines
-      systemInstruction += '\nFormatting constraints: Present data with absolute neatness, using clear bullet points to outline steps and bold titles. Deliver clean, production-ready source code snippets when requested. Keep responses highly active, intelligent, and focused.';
 
       // Attempt the API request with fallbacks using OpenRouter
       const OPENROUTER_API_KEY = "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";
-      const modelsToTry = [
-        'google/gemini-2.5-flash',
-        'meta-llama/llama-3.3-70b-instruct:free',
-        'openai/gpt-4o-mini'
+      
+      const userText = prompt.toLowerCase();
+      let primaryModel = "meta-llama/llama-3.3-70b-instruct:free";
+      
+      if (agentType === 'coding' || userText.includes("code") || userText.includes("html") || userText.includes("javascript") || userText.includes("bug")) {
+        primaryModel = "deepseek/deepseek-chat:free";
+      } else if (agentType === 'study' || userText.includes("physics") || userText.includes("chemistry") || userText.includes("math") || userText.includes("study")) {
+        primaryModel = "google/gemini-2.5-flash";
+      }
+
+      const allModels = [
+        "google/gemini-2.5-flash",
+        "deepseek/deepseek-chat:free",
+        "meta-llama/llama-3.3-70b-instruct:free"
       ];
+      
+      const modelsToTry = [primaryModel, ...allModels.filter(m => m !== primaryModel)];
       
       let responseText = null;
       let lastError = null;
@@ -204,6 +206,7 @@ Deliver high-energy, encouraging, and inspirational tactical guidance to help th
               model: model,
               messages: openRouterMessages,
               temperature: 0.65,
+              max_tokens: 4096,
             })
           });
 
@@ -221,8 +224,28 @@ Deliver high-energy, encouraging, and inspirational tactical guidance to help th
             throw new Error('No valid response from OpenRouter');
           }
         } catch (error: any) {
-          console.warn(`[AI ASSISTANT] Connection to ${model} failed:`, error.message || error);
+          // Silent fallback, only store the error for the final throw if all fail
           lastError = error;
+        }
+      }
+
+      // GEMINI FALLBACK
+      if (!responseText) {
+        try {
+          console.log(`[AI ASSISTANT] OpenRouter failed. Falling back to Google GenAI native SDK.`);
+          const modelParams: any = {
+            model: "gemini-2.5-flash",
+            systemInstruction: systemInstruction,
+          };
+          const response = await ai.models.generateContent({
+            ...modelParams,
+            contents: contents
+          });
+          responseText = response.text;
+          console.log(`[AI ASSISTANT] Success via Google GenAI fallback`);
+        } catch (geminiError: any) {
+          console.error(`[AI ASSISTANT] Gemini fallback failed:`, geminiError.message || geminiError);
+          lastError = geminiError;
         }
       }
 
