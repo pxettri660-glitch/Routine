@@ -86,7 +86,7 @@ async function startServer() {
   // 2. COGNITIVE CHAT ROUTER WITH ALL SECURE ARCHITECTURES INTEGRATED
   app.post('/api/gemini/chat', async (req, res) => {
     try {
-      const { prompt, history, agentType, enableSearch, image } = req.body;
+      const { prompt, history, agentType, enableSearch, image, model } = req.body;
       
       if (!prompt) {
         res.status(400).json({ error: 'Prompt is required' });
@@ -151,10 +151,16 @@ You can communicate seamlessly in English and Nepali.`;
       const userText = prompt.toLowerCase();
       let primaryModel = "meta-llama/llama-3.3-70b-instruct:free";
       
-      if (agentType === 'coding' || userText.includes("code") || userText.includes("html") || userText.includes("javascript") || userText.includes("bug")) {
-        primaryModel = "deepseek/deepseek-chat:free";
-      } else if (agentType === 'study' || userText.includes("physics") || userText.includes("chemistry") || userText.includes("math") || userText.includes("study")) {
-        primaryModel = "google/gemini-2.5-flash";
+      if (model && model !== 'auto') {
+        if (model === 'gemini') primaryModel = "google/gemini-2.5-flash";
+        else if (model === 'deepseek') primaryModel = "deepseek/deepseek-chat:free";
+        else if (model === 'llama') primaryModel = "meta-llama/llama-3.3-70b-instruct:free";
+      } else {
+        if (agentType === 'coding' || userText.includes("code") || userText.includes("html") || userText.includes("javascript") || userText.includes("bug")) {
+          primaryModel = "deepseek/deepseek-chat:free";
+        } else if (agentType === 'study' || userText.includes("physics") || userText.includes("chemistry") || userText.includes("math") || userText.includes("study")) {
+          primaryModel = "google/gemini-2.5-flash";
+        }
       }
 
       const allModels = [
@@ -254,7 +260,7 @@ You can communicate seamlessly in English and Nepali.`;
       }
 
       const textResponse = responseText || 'My apologies. I was unable to synthesize a cognitive response.';
-      res.json({ text: textResponse });
+      res.json({ text: textResponse, model: responseText ? primaryModel : 'None' });
 
     } catch (error: any) {
       console.error('Server-side router error:', error);

@@ -1,35 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Edit3, Search, Sparkles, Copy, Hash, Play, Pause, RotateCcw, HelpCircle } from 'lucide-react';
+import { Settings, Calculator, Timer, FileText, Moon, Sun, Monitor, Palette, Sparkles, Activity, Info, ChevronRight, Hash, Play, Pause, RotateCcw, Plus, Trash2, Edit3, Copy } from 'lucide-react';
 import { NoteItem } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 
-interface NotesProps {
+interface ToolsAndSettingsProps {
   notes: NoteItem[];
   onUpdateNotes: (newNotes: NoteItem[]) => void;
 }
 
-const DEFAULT_CATEGORIES = ['All', 'College & PCM', 'Coding Tasks', 'Homework Logs', 'Scratchpad'];
+const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateNotes }: ToolsAndSettingsProps) {
+  const [activeTab, setActiveTab] = useState<'tools' | 'settings'>('settings');
+  const [activeTool, setActiveTool] = useState<'calculator' | 'stopwatch' | 'notes'>('notes');
 
-export default function Notes({ notes, onUpdateNotes }: NotesProps) {
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
-    notes.length > 0 ? notes[0].id : null
-  );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [newNoteTitle, setNewNoteTitle] = useState('');
-  const [newNoteCategory, setNewNoteCategory] = useState('Scratchpad');
+  // Notes State
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(notes.length > 0 ? notes[0].id : null);
+  const selectedNote = notes.find((n) => n.id === selectedNoteId);
 
-  // Interactive Stopwatch State
+  // Stopwatch State
   const [swTime, setSwTime] = useState(0);
   const [swIsRunning, setSwIsRunning] = useState(false);
   const swIntervalRef = useRef<number | null>(null);
 
-  // Keyboard-Friendly Calculator State
+  // Calculator State
   const [calcDisplay, setCalcDisplay] = useState('0');
 
-  // Master Note object
-  const selectedNote = notes.find((n) => n.id === selectedNoteId);
-
-  // Stopwatch Logic
   useEffect(() => {
     if (swIsRunning) {
       const startTime = Date.now() - swTime;
@@ -37,9 +31,7 @@ export default function Notes({ notes, onUpdateNotes }: NotesProps) {
         setSwTime(Date.now() - startTime);
       }, 10);
     } else {
-      if (swIntervalRef.current) {
-        clearInterval(swIntervalRef.current);
-      }
+      if (swIntervalRef.current) clearInterval(swIntervalRef.current);
     }
     return () => {
       if (swIntervalRef.current) clearInterval(swIntervalRef.current);
@@ -55,551 +47,312 @@ export default function Notes({ notes, onUpdateNotes }: NotesProps) {
 
   const formatStopwatchTime = (timeMs: number) => {
     const cs = Math.floor((timeMs % 1000) / 10).toString().padStart(2, '0');
-    const s = Math.floor((timeMs / 1000) % 65).toString().padStart(2, '0');
-    const m = Math.floor((timeMs / 60000) % 65).toString().padStart(2, '0');
+    const s = Math.floor((timeMs / 1000) % 60).toString().padStart(2, '0');
+    const m = Math.floor((timeMs / 60000) % 60).toString().padStart(2, '0');
     return `${m}:${s}.${cs}`;
   };
 
-  // Calculator Logic
   const handleCalcPress = (char: string) => {
     setCalcDisplay((prev) => {
-      if (prev === '0' || prev === 'Error') {
-        return char;
-      }
+      if (prev === '0' || prev === 'Error') return char;
       return prev + char;
     });
   };
 
-  const handleCalcClear = () => {
-    setCalcDisplay('0');
-  };
-
+  const handleCalcClear = () => setCalcDisplay('0');
   const handleCalcSolve = () => {
     try {
-      // Explicitly evaluate mathematical expression securely using Function constructor
-      // This is a safe browser approach representing the user's intent:
-      const processedExpr = calcDisplay.replace(/x/g, '*');
+      const processedExpr = calcDisplay.replace(/x/g, '*').replace(/÷/g, '/');
       const result = new Function(`return ${processedExpr}`)();
       setCalcDisplay(String(result));
-    } catch (e) {
+    } catch {
       setCalcDisplay('Error');
     }
   };
 
-  // Notes state updates
   const createNote = () => {
-    const title = newNoteTitle.trim() || `New Note ${notes.length + 1}`;
     const newNote: NoteItem = {
       id: Date.now().toString(),
-      title,
+      title: 'New Note',
       content: '',
-      category: newNoteCategory,
+      category: 'General',
       updatedAt: new Date().toLocaleString(),
     };
-    const updated = [newNote, ...notes];
-    onUpdateNotes(updated);
+    onUpdateNotes([newNote, ...notes]);
     setSelectedNoteId(newNote.id);
-    setNewNoteTitle('');
-  };
-
-  const updateSelectedContent = (content: string) => {
-    if (!selectedNoteId) return;
-    const updated = notes.map((item) => {
-      if (item.id === selectedNoteId) {
-        return {
-          ...item,
-          content,
-          updatedAt: new Date().toLocaleString(),
-        };
-      }
-      return item;
-    });
-    onUpdateNotes(updated);
-  };
-
-  const updateSelectedTitle = (title: string) => {
-    if (!selectedNoteId) return;
-    const updated = notes.map((item) => {
-      if (item.id === selectedNoteId) {
-        return {
-          ...item,
-          title,
-          updatedAt: new Date().toLocaleString(),
-        };
-      }
-      return item;
-    });
-    onUpdateNotes(updated);
-  };
-
-  const updateSelectedCategory = (category: string) => {
-    if (!selectedNoteId) return;
-    const updated = notes.map((item) => {
-      if (item.id === selectedNoteId) {
-        return {
-          ...item,
-          category,
-          updatedAt: new Date().toLocaleString(),
-        };
-      }
-      return item;
-    });
-    onUpdateNotes(updated);
   };
 
   const deleteNote = (id: string) => {
-    if (confirm('De-compile this notes container permanently?')) {
-      const updated = notes.filter((item) => item.id !== id);
-      onUpdateNotes(updated);
-      if (selectedNoteId === id) {
-        setSelectedNoteId(updated.length > 0 ? updated[0].id : null);
-      }
-    }
+    const updated = notes.filter((n) => n.id !== id);
+    onUpdateNotes(updated);
+    if (selectedNoteId === id) setSelectedNoteId(updated.length > 0 ? updated[0].id : null);
   };
-
-  const copyToClipboard = () => {
-    if (!selectedNote) return;
-    navigator.clipboard.writeText(selectedNote.content);
-    alert('Note content copied to clipboard!');
-  };
-
-  const triggerPCMTemplate = () => {
-    if (!selectedNote) return;
-    const pcmTemplate = `📍 PHYSICS / CHEMISTRY / MATHS CONCEPT DIARY\n` +
-      `--------------------------------------------------\n` +
-      `📅 Subject: \n` +
-      `📚 Topic: \n\n` +
-      `📝 Core Equations & Theorems:\n` +
-      `• Formula 1: \n` +
-      `• Formula 2: \n\n` +
-      `🤔 Problem Patterns & Steps:\n` +
-      `1. \n` +
-      `2. \n\n` +
-      `💡 Key Concepts / Intuitions:\n\n`;
-    updateSelectedContent(selectedNote.content + pcmTemplate);
-  };
-
-  const triggerHomeworkTemplate = () => {
-    if (!selectedNote) return;
-    const hwTemplate = `📝 COLLEGE HOMEWORK LOG SHEET\n` +
-      `-------------------------------------------\n` +
-      `📅 Date Issued: ${new Date().toLocaleDateString()}\n` +
-      `⏳ Subject & Assignment Focus:\n` +
-      `• \n\n` +
-      `📌 Criteria for Completion:\n` +
-      `• [ ] Solve exercise questions\n` +
-      `• [ ] Draw relevant diagrams / proof graphs\n` +
-      `• [ ] Verify answers with answers sheet\n\n` +
-      `✍️ Solution draft / notes:\n\n`;
-    updateSelectedContent(selectedNote.content + hwTemplate);
-  };
-
-  const filteredNotes = notes.filter((n) => {
-    const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || n.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
 
   return (
-    <div className="space-y-6">
-      
-      {/* View Title */}
-      <div>
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Sparkles className="text-violet-400 w-5 h-5 animate-pulse" />
-          UTILITIES & SCAMP WORKSPACE
-        </h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Tactical toolkits housing an integrated stopwatch, calculation engine, and notes scratchpad.
-        </p>
-      </div>
-
-      {/* Top row: Stopwatch + Calculator */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Stopwatch Card */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-sky-500/10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase flex items-center gap-1.5">
-              <span>⏱️</span> stopwatch unit
-            </h3>
-            <span className="text-[9px] font-mono font-bold text-sky-400 bg-sky-500/10 px-2.5 py-0.5 rounded border border-sky-500/20">
-              Chronominder
-            </span>
-          </div>
-
-          <div className="flex flex-col items-center py-4 bg-slate-950/40 rounded-xl border border-slate-800/60 pb-6">
-            <span className="text-4xl font-extrabold font-mono tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">
-              {formatStopwatchTime(swTime)}
-            </span>
-            <span className="text-[10px] uppercase tracking-widest font-mono text-slate-505 block mt-1.5">
-              minutes : seconds . millis
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 mt-4">
-            {!swIsRunning ? (
-              <button
-                onClick={handleStartStopwatch}
-                className="flex-1 py-2 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Play className="w-3.5 h-3.5 fill-slate-950" /> Start
-              </button>
-            ) : (
-              <button
-                onClick={handlePauseStopwatch}
-                className="flex-1 py-2 px-4 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-450 hover:bg-rose-500/25 font-bold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Pause className="w-3.5 h-3.5 fill-current" /> Pause
-              </button>
-            )}
-
-            <button
-              onClick={handleResetStopwatch}
-              className="flex-1 py-2 px-4 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-350 font-bold text-xs border border-slate-800 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset
-            </button>
-          </div>
+    <motion.div 
+      className="space-y-6 sm:space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
+            <Settings className="w-8 h-8 text-pink-500" />
+            Config
+          </h2>
+          <p className="text-sm font-medium opacity-60 tracking-wide uppercase">System & Utilities</p>
         </div>
 
-        {/* Calculator Card */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-emerald-500/10">
-          <div className="flex items-center justify-between mb-3.5">
-            <h3 className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase flex items-center gap-1.5">
-              <span>🧮</span> math calculator
-            </h3>
-            <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
-              Expression solver
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {/* Input Display screen */}
-            <div className="bg-slate-955/70 rounded-xl border border-slate-800/80 p-3 text-right text-lg font-mono font-bold text-white shadow-inner truncate">
-              {calcDisplay}
-            </div>
-
-            {/* Buttons Grid layout */}
-            <div className="grid grid-cols-4 gap-1.5">
-              <button
-                onClick={handleCalcClear}
-                className="p-2 bg-rose-500/15 border border-rose-500/20 text-rose-450 rounded-lg text-xs font-extrabold hover:bg-rose-500/25 active:scale-95 cursor-pointer font-mono"
-              >
-                C
-              </button>
-              <button
-                onClick={() => handleCalcPress('(')}
-                className="p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-900/80 active:scale-95 cursor-pointer font-mono"
-              >
-                (
-              </button>
-              <button
-                onClick={() => handleCalcPress(')')}
-                className="p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-900/80 active:scale-95 cursor-pointer font-mono"
-              >
-                )
-              </button>
-              <button
-                onClick={() => handleCalcPress('/')}
-                className="p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs font-bold text-sky-400 hover:bg-slate-900/80 active:scale-95 cursor-pointer font-mono"
-              >
-                /
-              </button>
-
-              <button
-                onClick={() => handleCalcPress('7')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                7
-              </button>
-              <button
-                onClick={() => handleCalcPress('8')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                8
-              </button>
-              <button
-                onClick={() => handleCalcPress('9')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                9
-              </button>
-              <button
-                onClick={() => handleCalcPress('x')}
-                className="p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs font-bold text-sky-400 hover:bg-slate-900/80 active:scale-95 cursor-pointer font-mono"
-              >
-                x
-              </button>
-
-              <button
-                onClick={() => handleCalcPress('4')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                4
-              </button>
-              <button
-                onClick={() => handleCalcPress('5')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                5
-              </button>
-              <button
-                onClick={() => handleCalcPress('6')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                6
-              </button>
-              <button
-                onClick={() => handleCalcPress('-')}
-                className="p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs font-bold text-sky-400 hover:bg-slate-900/80 active:scale-95 cursor-pointer font-mono"
-              >
-                -
-              </button>
-
-              <button
-                onClick={() => handleCalcPress('1')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                1
-              </button>
-              <button
-                onClick={() => handleCalcPress('2')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                2
-              </button>
-              <button
-                onClick={() => handleCalcPress('3')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                3
-              </button>
-              <button
-                onClick={() => handleCalcPress('+')}
-                className="p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs font-bold text-sky-400 hover:bg-slate-900/80 active:scale-95 cursor-pointer font-mono"
-              >
-                +
-              </button>
-
-              <button
-                onClick={() => handleCalcPress('0')}
-                className="col-span-2 p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                0
-              </button>
-              <button
-                onClick={() => handleCalcPress('.')}
-                className="p-2 bg-slate-950/40 border border-slate-850 rounded-lg text-xs font-bold text-slate-200 hover:bg-slate-900/50 active:scale-95 cursor-pointer font-mono"
-              >
-                .
-              </button>
-              <button
-                onClick={handleCalcSolve}
-                className="p-2 bg-sky-500 hover:bg-sky-400 text-slate-95 bg-sky-500 rounded-lg text-xs font-extrabold active:scale-95 cursor-pointer font-mono"
-              >
-                =
-              </button>
-            </div>
-          </div>
+        <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-2xl backdrop-blur-md border border-black/5 dark:border-white/10 w-fit">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-6 py-2 text-sm font-bold rounded-xl transition-all duration-300 ${activeTab === 'settings' ? 'bg-white dark:bg-black text-black dark:text-white shadow-md' : 'text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white'}`}
+          >
+            Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('tools')}
+            className={`px-6 py-2 text-sm font-bold rounded-xl transition-all duration-300 ${activeTab === 'tools' ? 'bg-white dark:bg-black text-black dark:text-white shadow-md' : 'text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white'}`}
+          >
+            Tools
+          </button>
         </div>
-
       </div>
 
-      {/* Dynamic Multi-Page Scratchpad */}
-      <h3 className="text-sm font-semibold tracking-wider text-slate-400 uppercase flex items-center gap-2 pt-4">
-        <span>💾</span> Notes Scratchpad Archive
-      </h3>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        
-        {/* Sidebar notes list */}
-        <div className="lg:col-span-1 bg-slate-900/30 border border-slate-800/80 rounded-2xl p-4 flex flex-col h-[480px]">
-          {/* Search */}
-          <div className="relative mb-3.5">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search cells..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
-            />
-          </div>
+      <AnimatePresence mode="wait">
+        {activeTab === 'settings' ? (
+          <motion.div 
+            key="settings"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          >
+            <div className="space-y-6">
+              <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <Palette className="w-32 h-32" />
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2 relative z-10">
+                  <Palette className="w-4 h-4 text-pink-500" /> Appearance
+                </h3>
+                
+                <div className="space-y-4 relative z-10">
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/10">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Moon className="w-5 h-5" /></div>
+                      <div>
+                        <h4 className="font-bold text-sm">Theme Mode</h4>
+                        <p className="text-xs opacity-60 mt-0.5">Toggle light & dark</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 opacity-40" />
+                  </div>
 
-          {/* Categories select wrap */}
-          <div className="flex gap-1 overflow-x-auto pb-2.5 mb-3.5 border-b border-slate-800/60 no-scrollbar">
-            {DEFAULT_CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all whitespace-nowrap cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/20'
-                    : 'text-slate-500 border border-transparent hover:text-slate-300'
-                }`}
-              >
-                {cat.split(' ')[0]}
-              </button>
-            ))}
-          </div>
-
-          {/* Spawn Header details */}
-          <div className="space-y-2 mb-4">
-            <div className="flex gap-1.5">
-              <input
-                type="text"
-                placeholder="Spawn name..."
-                value={newNoteTitle}
-                onChange={(e) => setNewNoteTitle(e.target.value)}
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-sky-500 font-sans"
-              />
-              <button
-                onClick={createNote}
-                className="bg-sky-500 hover:bg-sky-400 text-slate-950 p-1.5 rounded-lg active:scale-95 transition-all text-xs font-bold cursor-pointer"
-                title="Spawn item"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <select
-              value={newNoteCategory}
-              onChange={(e) => setNewNoteCategory(e.target.value)}
-              className="w-full bg-[#0c1020] border border-slate-800 text-[10px] text-slate-400 rounded-lg py-1 px-2 focus:outline-none cursor-pointer"
-            >
-              <option value="College & PCM">🏢 College & PCM</option>
-              <option value="Coding Tasks">💻 Coding Tasks</option>
-              <option value="Homework Logs">📝 Homework Logs</option>
-              <option value="Scratchpad">📚 Scratchpad</option>
-            </select>
-          </div>
-
-          {/* List entries */}
-          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
-            {filteredNotes.length === 0 ? (
-              <div className="text-[11px] text-slate-500 text-center py-8">
-                No entries found.
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/10">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Sparkles className="w-5 h-5" /></div>
+                      <div>
+                        <h4 className="font-bold text-sm">Animations</h4>
+                        <p className="text-xs opacity-60 mt-0.5">Motion & Blur effects</p>
+                      </div>
+                    </div>
+                    <div className="w-12 h-6 rounded-full bg-pink-500 relative transition-colors duration-300">
+                      <div className="w-4 h-4 rounded-full bg-white absolute top-1 left-7" />
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              filteredNotes.map((n) => (
-                <div
-                  key={n.id}
-                  onClick={() => setSelectedNoteId(n.id)}
-                  className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                    selectedNoteId === n.id
-                      ? 'bg-sky-500/[0.04] border-sky-500/40'
-                      : 'bg-slate-950/20 border-slate-800/40 hover:border-slate-800'
-                  }`}
+
+              <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl">
+                <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-500" /> Performance
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Monitor className="w-5 h-5" /></div>
+                      <div>
+                        <h4 className="font-bold text-sm">Lazy Loading</h4>
+                        <p className="text-xs opacity-60 mt-0.5">Optimized rendering</p>
+                      </div>
+                    </div>
+                    <div className="w-12 h-6 rounded-full bg-emerald-500 relative transition-colors duration-300">
+                      <div className="w-4 h-4 rounded-full bg-white absolute top-1 left-7" />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Activity className="w-5 h-5" /></div>
+                      <div>
+                        <h4 className="font-bold text-sm">Memory Leak Protection</h4>
+                        <p className="text-xs opacity-60 mt-0.5">Auto-garbage collection</p>
+                      </div>
+                    </div>
+                    <div className="w-12 h-6 rounded-full bg-emerald-500 relative transition-colors duration-300">
+                      <div className="w-4 h-4 rounded-full bg-white absolute top-1 left-7" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="p-8 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl text-center relative overflow-hidden h-full flex flex-col justify-center items-center group">
+                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
+                 <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-indigo-500 to-purple-500 p-1 shadow-2xl shadow-indigo-500/30 mb-6">
+                      <div className="w-full h-full rounded-[1.75rem] bg-black/20 backdrop-blur-xl flex items-center justify-center border border-white/20">
+                        <span className="text-4xl">👑</span>
+                      </div>
+                    </div>
+                    <h3 className="text-2xl font-bold tracking-tight mb-2">Jarvis OS</h3>
+                    <p className="text-sm opacity-60 mb-6">Version 5.0.0 (Ultimate Build)</p>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      <span className="px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest opacity-80 border border-black/5 dark:border-white/10">iOS Architecture</span>
+                      <span className="px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest opacity-80 border border-black/5 dark:border-white/10">120 FPS target</span>
+                      <span className="px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest opacity-80 border border-black/5 dark:border-white/10">Edge-to-Edge</span>
+                    </div>
+                 </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="tools"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-6"
+          >
+            <div className="flex bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl backdrop-blur-md border border-black/5 dark:border-white/10 max-w-md mx-auto">
+              {[
+                { id: 'notes', icon: FileText, label: 'Notes' },
+                { id: 'calculator', icon: Calculator, label: 'Calc' },
+                { id: 'stopwatch', icon: Timer, label: 'Timer' }
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTool(t.id as any)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${activeTool === t.id ? 'bg-white dark:bg-black text-black dark:text-white shadow-md' : 'text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white'}`}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <h4 className={`text-xs font-bold truncate ${selectedNoteId === n.id ? 'text-sky-400' : 'text-slate-300'}`}>
-                      {n.title || 'Untitled sheet'}
-                    </h4>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNote(n.id);
-                      }}
-                      className="p-1 text-slate-605 hover:text-rose-400 rounded transition-all opacity-40 hover:opacity-100"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-500 truncate mt-1">
-                    {n.content ? n.content.substring(0, 30) : 'Empty sheet...'}
-                  </p>
-                  <div className="flex items-center justify-between mt-2.5 pt-1.5 border-t border-slate-900/60">
-                    <span className="text-[8px] bg-slate-900 px-1.5 py-0.5 rounded text-slate-400 font-bold uppercase tracking-wide">
-                      {n.category}
-                    </span>
-                    <span className="text-[8px] text-slate-600 font-mono">
-                      {n.updatedAt.split(', ')[0]}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Notes Editor content pane */}
-        <div className="lg:col-span-3 bg-slate-900/30 border border-slate-800/80 rounded-2xl p-5 flex flex-col h-[480px]">
-          {selectedNote ? (
-            <div className="flex-1 flex flex-col space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/60">
-                <div className="space-y-1 flex-1">
-                  <input
-                    type="text"
-                    value={selectedNote.title}
-                    onChange={(e) => updateSelectedTitle(e.target.value)}
-                    className="bg-transparent border-none text-base font-bold text-white focus:outline-none w-full placeholder-slate-400"
-                    placeholder="Note Header"
-                  />
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-550 font-mono">
-                      Updated: {selectedNote.updatedAt}
-                    </span>
-                    <span className="text-slate-750 font-mono text-[10px]">|</span>
-                    <select
-                      value={selectedNote.category}
-                      onChange={(e) => updateSelectedCategory(e.target.value)}
-                      className="bg-slate-900/60 text-[10px] text-sky-400 font-bold uppercase tracking-wider py-0.5 px-2 rounded-md outline-none cursor-pointer"
-                    >
-                      <option value="College & PCM">College & PCM</option>
-                      <option value="Coding Tasks">Coding Tasks</option>
-                      <option value="Homework Logs">Homework Logs</option>
-                      <option value="Scratchpad">Scratchpad</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                  <button
-                    onClick={triggerPCMTemplate}
-                    className="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase transition-all flex items-center gap-1 hover:bg-amber-500/15 cursor-pointer"
-                  >
-                    <Hash className="w-3 h-3" /> PCM Grid
-                  </button>
-                  <button
-                    onClick={triggerHomeworkTemplate}
-                    className="px-2.5 py-1 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-bold uppercase transition-all flex items-center gap-1 hover:bg-violet-500/15 cursor-pointer"
-                  >
-                    <Sparkles className="w-3 h-3" /> HW log
-                  </button>
-                  <button
-                    onClick={copyToClipboard}
-                    className="p-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all cursor-pointer"
-                    title="Copy full notes sheet"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 relative">
-                <textarea
-                  value={selectedNote.content}
-                  onChange={(e) => updateSelectedContent(e.target.value)}
-                  placeholder="Compose equations, criteria, or concepts... Auto-saves instantly."
-                  className="w-full h-full font-mono text-xs sm:text-sm leading-relaxed p-4 bg-slate-950/40 rounded-xl border border-slate-800/60 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500/80 resize-none overflow-y-auto"
-                />
-                <div className="absolute bottom-2.5 right-3 text-[10px] font-mono text-slate-600 bg-[#070b16] px-2 py-0.5 rounded border border-slate-900/60 select-none">
-                  Chr: {selectedNote.content.length} | Wrd: {selectedNote.content.trim() ? selectedNote.content.trim().split(/\s+/).length : 0}
-                </div>
-              </div>
+                  <t.icon className="w-4 h-4" /> <span className="hidden sm:inline">{t.label}</span>
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-500 py-12 select-none">
-              <Plus className="w-12 h-12 text-slate-700 mb-3" />
-              <h4 className="font-semibold text-slate-450">Scratchpad Core Inactive</h4>
-              <p className="text-xs max-w-sm mt-1">
-                Select an entry from the left column index or spawn a tab to record definitions and logs.
-              </p>
-            </div>
-          )}
-        </div>
 
-      </div>
-    </div>
+            <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl min-h-[500px]">
+              <AnimatePresence mode="wait">
+                {activeTool === 'notes' && (
+                  <motion.div key="notes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col md:flex-row gap-6">
+                    <div className="md:w-1/3 flex flex-col gap-4 border-b md:border-b-0 md:border-r border-black/10 dark:border-white/10 pb-4 md:pb-0 md:pr-4">
+                       <button onClick={createNote} className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl font-bold text-sm transition-all shadow-md active:scale-95">
+                         <Plus className="w-4 h-4" /> New Note
+                       </button>
+                       <div className="space-y-2 overflow-y-auto max-h-[400px]">
+                         {notes.map(n => (
+                           <div 
+                             key={n.id} 
+                             onClick={() => setSelectedNoteId(n.id)}
+                             className={`p-4 rounded-xl cursor-pointer transition-all border ${selectedNoteId === n.id ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-black/5 dark:bg-white/5 border-transparent hover:border-black/10 dark:hover:border-white/10'}`}
+                           >
+                             <h4 className="font-bold text-sm truncate">{n.title || 'Untitled Note'}</h4>
+                             <p className="text-[10px] opacity-50 mt-1">{n.updatedAt}</p>
+                           </div>
+                         ))}
+                       </div>
+                    </div>
+                    <div className="md:w-2/3 flex flex-col gap-4 min-h-[300px]">
+                      {selectedNote ? (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <input 
+                              type="text" 
+                              value={selectedNote.title} 
+                              onChange={(e) => {
+                                onUpdateNotes(notes.map(n => n.id === selectedNote.id ? {...n, title: e.target.value} : n));
+                              }}
+                              className="text-2xl font-bold bg-transparent border-none outline-none focus:ring-0 w-full"
+                              placeholder="Note Title"
+                            />
+                            <button onClick={() => deleteNote(selectedNote.id)} className="p-2 text-black/30 dark:text-white/30 hover:text-rose-500 rounded-xl transition-colors"><Trash2 className="w-5 h-5" /></button>
+                          </div>
+                          <textarea 
+                            value={selectedNote.content}
+                            onChange={(e) => {
+                               onUpdateNotes(notes.map(n => n.id === selectedNote.id ? {...n, content: e.target.value} : n));
+                            }}
+                            className="flex-1 w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl p-4 resize-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm leading-relaxed"
+                            placeholder="Start typing your thoughts..."
+                          />
+                        </>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center opacity-30">
+                          <FileText className="w-16 h-16 mb-4" />
+                          <p className="font-bold">Select or create a note</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTool === 'stopwatch' && (
+                  <motion.div key="sw" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center py-12">
+                    <div className="w-64 h-64 rounded-full border-8 border-black/5 dark:border-white/10 flex items-center justify-center relative shadow-2xl mb-12">
+                       <div className="absolute inset-0 rounded-full border-8 border-rose-500/20" />
+                       <div className="absolute inset-0 rounded-full border-8 border-rose-500 border-l-transparent border-t-transparent animate-spin-slow opacity-50" style={{ animationDuration: '3s' }} />
+                       <span className="text-5xl font-black font-mono tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-rose-400 to-orange-500">
+                         {formatStopwatchTime(swTime)}
+                       </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button onClick={swIsRunning ? handlePauseStopwatch : handleStartStopwatch} className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-500 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/30 hover:scale-105 active:scale-95 transition-all">
+                        {swIsRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
+                      </button>
+                      <button onClick={handleResetStopwatch} className="w-16 h-16 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/20 transition-all">
+                        <RotateCcw className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTool === 'calculator' && (
+                  <motion.div key="calc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center max-w-sm mx-auto py-8">
+                     <div className="w-full bg-black/5 dark:bg-black/30 rounded-3xl p-6 shadow-inner border border-black/10 dark:border-white/5 mb-6 text-right overflow-hidden">
+                       <span className="text-5xl font-black font-mono tracking-tighter block w-full overflow-x-auto scrollbar-hide">{calcDisplay}</span>
+                     </div>
+                     <div className="grid grid-cols-4 gap-3 sm:gap-4 w-full">
+                       {['C', '(', ')', '÷', '7', '8', '9', 'x', '4', '5', '6', '-', '1', '2', '3', '+', '0', '.', '=', '%'].map((btn) => (
+                         <button
+                           key={btn}
+                           onClick={() => {
+                             if (btn === 'C') handleCalcClear();
+                             else if (btn === '=') handleCalcSolve();
+                             else handleCalcPress(btn);
+                           }}
+                           className={`aspect-square rounded-2xl flex items-center justify-center text-xl font-bold shadow-md hover:-translate-y-1 active:translate-y-0 transition-all ${
+                             ['÷', 'x', '-', '+', '='].includes(btn) 
+                               ? 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-indigo-500/25' 
+                               : btn === 'C' ? 'bg-rose-500/10 text-rose-500' 
+                               : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20'
+                           }`}
+                         >
+                           {btn}
+                         </button>
+                       ))}
+                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
-}
+});
+
+export default ToolsAndSettings;

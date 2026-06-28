@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Bell, CheckSquare, Award, Play, Pause, RotateCcw, Volume2, Sparkles, Flame } from 'lucide-react';
+import { Clock, Bell, CheckSquare, Award, Play, Pause, RotateCcw, Volume2, Sparkles, Flame, ChevronRight, Activity, CalendarDays, Zap, Coffee, Target } from 'lucide-react';
 import { RoutineItem, GoalItem } from '../types';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface DashboardProps {
   currentTime: Date;
@@ -18,7 +18,7 @@ interface DashboardProps {
   onAwardXP: (amount: number) => void;
 }
 
-export default function Dashboard({
+const Dashboard = React.memo(function Dashboard({
   currentTime,
   currentTask,
   taskProgress,
@@ -47,12 +47,10 @@ export default function Dashboard({
       pomoTimerRef.current = window.setInterval(() => {
         setPomoTime((prev) => {
           if (prev <= 1) {
-            // Completed! Restore defaults and reward user
             setPomoIsActive(false);
             if (pomoTimerRef.current) clearInterval(pomoTimerRef.current);
             setTimeout(() => {
               onAwardXP(250);
-              alert('🍅 POMODORO TARGET MET! Focus reward: +250 XP bestowed upon Prince!');
             }, 100);
             return 1500;
           }
@@ -64,7 +62,6 @@ export default function Dashboard({
         clearInterval(pomoTimerRef.current);
       }
     }
-
     return () => {
       if (pomoTimerRef.current) clearInterval(pomoTimerRef.current);
     };
@@ -86,296 +83,199 @@ export default function Dashboard({
   const timeString = currentTime.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
     hour12: true,
   });
 
   const dateString = currentTime.toLocaleDateString('en-US', {
     weekday: 'long',
-    year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+
+  const greeting = currentTime.getHours() < 12 ? 'Good morning' : currentTime.getHours() < 18 ? 'Good afternoon' : 'Good evening';
 
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+      transition: { staggerChildren: 0.1 }
     }
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+    hidden: { opacity: 0, y: 30 },
+    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } }
   };
 
   return (
     <motion.div 
-      className="space-y-6"
+      className="space-y-6 sm:space-y-8"
       variants={containerVariants}
       initial="hidden"
       animate="show"
       layout
     >
       
-      {/* HUD Overview Row: Progress Ring & Pomodoro */}
-      <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-6" variants={itemVariants} layout>
-        
-        {/* Core Ring Card */}
-        <motion.div 
-          className="lg:col-span-2 bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-sky-500/25"
-          layout
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-semibold tracking-wider text-slate-400 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-dot" />
-              FOCUS COCKPIT SYSTEM
-            </h3>
-            <span className="bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-sky-500/15">
-              Live chronometer
-            </span>
+      {/* Header Section */}
+      <motion.div variants={itemVariants} className="flex items-end justify-between pt-2 px-2">
+        <div>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">{timeString}</h2>
+          <p className="text-sm font-medium opacity-60 tracking-wide uppercase">{dateString}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <h3 className="text-sm font-bold">{greeting}, Prince</h3>
+            <p className="text-xs opacity-50">Ready to conquer today?</p>
           </div>
-
-          <div className="flex flex-col md:flex-row items-center justify-around gap-8 py-4">
-            {/* Dynamic circle */}
-            <div className="relative w-40 h-40 flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="68"
-                  className="stroke-slate-850"
-                  strokeWidth="8"
-                  fill="transparent"
-                />
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="68"
-                  className="stroke-emerald-500 transition-all duration-500 ease-out"
-                  strokeWidth="8"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 68}
-                  strokeDashoffset={2 * Math.PI * 68 * (1 - Math.max(0, Math.min(100, taskProgress)) / 100)}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-450 to-sky-450 font-mono">
-                  {taskProgress}%
-                </span>
-                <span className="text-[9px] uppercase tracking-widest text-slate-500 mt-1 font-bold">
-                  Block progress
-                </span>
-              </div>
+          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 shadow-lg cursor-pointer hover:scale-105 transition-transform">
+            <div className="w-full h-full rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center border border-white/20">
+              <span className="text-xl">👑</span>
             </div>
+          </div>
+        </div>
+      </motion.div>
 
-            {/* Program details */}
-            <div className="flex-1 space-y-3.5 text-center md:text-left">
-              <div>
-                <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-emerald-400">
-                  Active Timelines
+      {/* Main Focus Card (Active Routine) */}
+      <motion.div variants={itemVariants} className="relative group">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-[2rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+        <div className="relative p-6 sm:p-8 rounded-[2rem] overflow-hidden backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-2xl">
+          {/* Progress Background */}
+          <div className="absolute top-0 left-0 bottom-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 transition-all duration-1000 ease-out" style={{ width: `${taskProgress}%` }}></div>
+          
+          <div className="relative z-10 flex flex-col sm:flex-row gap-6 sm:items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
                 </span>
-                <motion.h4 
-                  key={currentTask?.id || 'none'}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="text-lg font-bold text-white mt-0.5"
-                >
-                  {currentTask ? currentTask.title : 'No active program scheduled'}
-                </motion.h4>
+                <span className="text-xs font-bold uppercase tracking-widest text-sky-500">Current Focus</span>
               </div>
-              <motion.p 
-                key={(currentTask?.desc || 'none') + '-desc'}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-slate-400 text-xs sm:text-sm max-w-md leading-relaxed"
-              >
-                {currentTask ? currentTask.desc : 'Personal transitional slot. Setup buffers.'}
-              </motion.p>
+              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
+                {currentTask ? currentTask.title : 'Free Time'}
+              </h3>
+              <p className="text-sm opacity-70 leading-relaxed max-w-md">
+                {currentTask ? currentTask.desc : 'No active blocks scheduled. Take a break or prepare for the next task.'}
+              </p>
+              
               {currentTask && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-center md:justify-start gap-3 mt-1.5 text-[10px] font-mono text-slate-500 bg-slate-950/45 py-2 px-3.5 rounded-lg border border-slate-800/40 w-fit"
-                >
-                  <span>Start: {currentTask.start}</span>
-                  <span className="text-slate-755">|</span>
-                  <span>End: {currentTask.end}</span>
-                </motion.div>
+                <div className="mt-6 flex items-center gap-4">
+                  <div className="flex-1 max-w-[200px] h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
+                    <div className="h-full bg-gradient-to-r from-sky-400 to-indigo-500 rounded-full" style={{ width: `${taskProgress}%` }}></div>
+                  </div>
+                  <span className="text-xs font-bold font-mono w-10 text-right">{taskProgress}%</span>
+                </div>
               )}
             </div>
-          </div>
-        </motion.div>
-
-        {/* Pomodoro Timer unit */}
-        <motion.div 
-          className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-xl flex flex-col justify-between transition-all duration-300 hover:border-rose-500/20 relative overflow-hidden"
-          layout
-        >
-          
-          {/* Ambient Glow */}
-          <div className="absolute -top-10 -right-10 w-24 h-24 bg-rose-505/10 rounded-full blur-2xl pointer-events-none" />
-
-          <div>
-            <h3 className="text-xs font-semibold tracking-wider text-slate-400 flex items-center gap-1.5 mb-4 uppercase">
-              <Flame className="w-4 h-4 text-rose-505 animate-pulse" />
-              Pomodoro Focus Engine
-            </h3>
-            <div className="bg-slate-950/60 rounded-xl p-4 text-center border border-slate-800/60 font-mono relative overflow-hidden">
-              <motion.div 
-                key={pomoTime}
-                initial={{ scale: 0.95, opacity: 0.8 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400 tracking-wider"
-              >
-                {formatPomoTime(pomoTime)}
-              </motion.div>
-              <span className="text-[9px] uppercase tracking-widest text-slate-500 block mt-1 font-bold">
-                Interval Countdown (+250 XP)
-              </span>
+            
+            <div className="flex sm:flex-col gap-3 justify-center mt-6 sm:mt-0">
+              <button onClick={() => onNavigate('routine')} className="p-4 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 backdrop-blur-md transition-colors border border-black/5 dark:border-white/10 flex items-center justify-center" title="Routine">
+                <Activity className="w-5 h-5" />
+              </button>
+              <button onClick={() => onNavigate('calendar')} className="p-4 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 backdrop-blur-md transition-colors border border-black/5 dark:border-white/10 flex items-center justify-center" title="Calendar">
+                <CalendarDays className="w-5 h-5" />
+              </button>
             </div>
           </div>
-
-          <div className="flex gap-2 mt-4">
-            {!pomoIsActive ? (
-              <button
-                onClick={handleStartPomo}
-                className="flex-1 py-2 px-3 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
-              >
-                Start
-              </button>
-            ) : (
-              <button
-                onClick={handlePausePomo}
-                className="flex-1 py-2 px-3 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-400 hover:bg-rose-500/15 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
-              >
-                Pause
-              </button>
-            )}
-            <button
-              onClick={handleResetPomo}
-              className="px-3.5 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg text-xs font-bold transition-all"
-              title="Reset timer"
-            >
-              Reset
-            </button>
-          </div>
-        </motion.div>
-
+        </div>
       </motion.div>
 
-      {/* Clocks, alarm configs & Stats */}
-      <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6" variants={itemVariants} layout>
-        
-        {/* Clock Card */}
-        <motion.div className="bg-slate-900/30 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/20 transition-all font-mono" layout>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-              System UTC Clock
-            </span>
-            <Clock className="w-3.5 h-3.5 text-violet-400" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        {/* Pomodoro Card */}
+        <motion.div variants={itemVariants} onClick={() => onNavigate('focus')} className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex flex-col justify-between relative overflow-hidden group cursor-pointer hover:border-black/10 dark:hover:border-white/20">
+          <div className="absolute top-0 right-0 p-6 opacity-10 dark:opacity-20 group-hover:opacity-20 dark:group-hover:opacity-40 transition-opacity duration-500">
+             <Coffee className="w-24 h-24" strokeWidth={1} />
           </div>
-          <div className="text-2xl font-black text-violet-400 tracking-wider">
-            {timeString}
-          </div>
-          <span className="text-[9px] text-slate-550 block mt-1 font-sans">
-            {dateString}
-          </span>
-        </motion.div>
-
-        {/* Alarm Card */}
-        <motion.div className="bg-slate-900/30 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/20 transition-all" layout>
-          <div className="flex items-center justify-between mb-2 inline-flex w-full">
-            <span className="text-[10px] font-bold tracking-widest text-slate-550 uppercase">
-              Morning Alarm Wakeup
-            </span>
-            <Bell className="w-3.5 h-3.5 text-amber-400" />
-          </div>
-          <div className="flex items-center gap-2.5">
-            <input
-              type="time"
-              value={alarmTime}
-              onChange={(e) => onSetAlarmTime(e.target.value)}
-              className="bg-slate-950 border border-slate-800/80 px-2 py-1 rounded-lg text-xs text-amber-400 font-mono focus:outline-none w-20"
-            />
-            <button
-              onClick={onToggleAlarm}
-              className={`flex-1 py-1 px-2.5 rounded text-[10px] font-bold uppercase transition-all border font-mono ${
-                isAlarmEnabled
-                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/15'
-                  : 'bg-slate-850 hover:bg-slate-800 border-slate-750 text-slate-500'
-              }`}
-            >
-              {isAlarmEnabled ? 'Enabled' : 'Muted'}
-            </button>
+          <div className="relative z-10">
+            <h3 className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1 flex items-center gap-2">
+              <Flame className="w-4 h-4 text-orange-500" /> Focus Timer
+            </h3>
+            <div className="text-5xl font-mono font-bold tracking-tighter my-6 text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-red-500 drop-shadow-sm">
+              {formatPomoTime(pomoTime)}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); pomoIsActive ? handlePausePomo() : handleStartPomo(); }}
+                className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-sm shadow-lg hover:shadow-orange-500/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {pomoIsActive ? <><Pause className="w-4 h-4" /> Pause</> : <><Play className="w-4 h-4" /> Start Focus</>}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleResetPomo(); }}
+                className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 backdrop-blur-md transition-colors border border-black/5 dark:border-white/10"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </motion.div>
 
-        {/* Directives completion */}
-        <motion.div className="bg-slate-900/30 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/20 transition-all" layout>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-              Directives Matrix
-            </span>
-            <CheckSquare className="w-3.5 h-3.5 text-emerald-450" />
+        {/* Goals Summary Card */}
+        <motion.div variants={itemVariants} className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl relative overflow-hidden group cursor-pointer hover:border-black/10 dark:hover:border-white/20" onClick={() => onNavigate('goals')}>
+          <div className="absolute top-0 right-0 p-6 opacity-10 dark:opacity-20 group-hover:opacity-20 dark:group-hover:opacity-40 transition-opacity duration-500">
+             <Target className="w-24 h-24" strokeWidth={1} />
           </div>
-          <motion.div 
-            key={`${completedGoals}-${totalGoals}`}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-2xl font-bold font-mono text-emerald-400"
+          <div className="relative z-10 h-full flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1 flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-emerald-500" /> Today's Goals
+              </h3>
+              <div className="mt-4">
+                <span className="text-4xl font-bold">{completedGoals}</span>
+                <span className="text-lg opacity-50">/{totalGoals}</span>
+                <span className="ml-2 text-sm font-medium opacity-70">Completed</span>
+              </div>
+            </div>
+            
+            <div className="mt-6 space-y-3">
+              <div className="w-full h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
+                <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000 ease-out shadow-inner" style={{ width: `${goalsProgress}%` }}></div>
+              </div>
+              <div className="flex justify-between items-center text-xs font-bold opacity-60">
+                <span>Progress</span>
+                <span>{goalsProgress}%</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Alarm & Quick Actions */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pb-6">
+        <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex items-center justify-between group hover:border-black/10 dark:hover:border-white/20 transition-colors">
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-2xl ${isAlarmEnabled ? 'bg-sky-500/20 text-sky-500' : 'bg-black/5 dark:bg-white/10 opacity-50'}`}>
+              <Bell className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm">Morning Alarm</h4>
+              <p className="text-xs opacity-60 font-mono mt-0.5">{alarmTime}</p>
+            </div>
+          </div>
+          <button 
+            onClick={onToggleAlarm}
+            className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${isAlarmEnabled ? 'bg-sky-500' : 'bg-black/20 dark:bg-white/20'}`}
           >
-            {completedGoals} / {totalGoals}
-          </motion.div>
-          <div className="w-full bg-slate-950 rounded-full h-1 mt-2.5">
-            <motion.div
-              layout
-              className="bg-emerald-500 h-1 rounded-full transition-all duration-300"
-              style={{ width: `${goalsProgress}%` }}
-            />
-          </div>
-        </motion.div>
-
-      </motion.div>
-
-      {/* Audio Engine Acoustics evaluation */}
-      <motion.div 
-        variants={itemVariants}
-        layout
-        className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-sky-500/20"
-      >
-        <h3 className="text-sm font-bold text-white mb-1.5 flex items-center gap-2 uppercase tracking-wide">
-          <Volume2 className="w-4 h-4 text-sky-400" />
-          System Acoustics Demonstrator
-        </h3>
-        <p className="text-xs text-slate-400 mb-4 max-w-xl">
-          Instantly execute the custom synthesizer bell and voice announcement triggers to test system acoustics and speakers in your browser.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            onClick={triggerBuzzerDemo}
-            className="flex items-center justify-center gap-2.5 p-3.5 rounded-xl border border-rose-500/15 bg-rose-500/5 hover:bg-rose-500/15 text-rose-300 font-bold text-xs transition-all shadow active:scale-95 cursor-pointer uppercase font-mono tracking-wider "
-          >
-            <Bell className="w-4.5 h-4.5 text-rose-450" />
-            Buzzer test
+            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all duration-300 ${isAlarmEnabled ? 'left-7' : 'left-1'}`} />
           </button>
-          
-          <button
-            onClick={triggerVoiceDemo}
-            className="flex items-center justify-center gap-2.5 p-3.5 rounded-xl border border-sky-500/15 bg-sky-500/5 hover:bg-sky-500/15 text-sky-300 font-bold text-xs transition-all shadow active:scale-95 cursor-pointer uppercase font-mono tracking-wider "
-          >
-            <Volume2 className="w-4.5 h-4.5 text-sky-405" />
-            Voice test
-          </button>
+        </div>
+
+        <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex items-center justify-between group hover:border-black/10 dark:hover:border-white/20 transition-colors cursor-pointer" onClick={() => onNavigate('music')}>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-violet-500/20 text-violet-500 group-hover:scale-110 transition-transform">
+              <Volume2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm">Media & Synths</h4>
+              <p className="text-xs opacity-60 mt-0.5">Focus frequencies</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-opacity" />
         </div>
       </motion.div>
 
     </motion.div>
   );
-}
+});
 
+export default Dashboard;

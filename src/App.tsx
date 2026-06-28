@@ -15,7 +15,9 @@ import {
   Bot,
   Sliders,
   Cpu,
-  BrainCircuit
+  BrainCircuit,
+  Sparkles,
+  Settings
 } from 'lucide-react';
 
 import { RoutineItem, GoalItem, NoteItem, AudioTrack } from './types';
@@ -57,6 +59,7 @@ const DEFAULT_NOTES: NoteItem[] = [
 ];
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [isThemeLight, setIsThemeLight] = useState<boolean>(false);
@@ -110,6 +113,13 @@ export default function App() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
+  useEffect(() => {
+    const splashTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500);
+    return () => clearTimeout(splashTimer);
+  }, []);
+
   // Sync state data to storage
   useEffect(() => {
     localStorage.setItem('prince_routines', JSON.stringify(routines));
@@ -144,7 +154,7 @@ export default function App() {
   }, []);
 
   // XP addition and Level coordination
-  const handleAwardXP = (amount: number) => {
+  const handleAwardXP = React.useCallback((amount: number) => {
     setCurrentXP((prevXP) => {
       let nextXP = prevXP + amount;
       let nextLevel = currentLevel;
@@ -163,7 +173,7 @@ export default function App() {
       }
       return nextXP;
     });
-  };
+  }, [currentLevel]);
 
   // Web Audio Synthesizer: aggressive wake-up alarm chime
   const playSoundAlarmBeep = () => {
@@ -325,27 +335,27 @@ export default function App() {
   }, [currentTime, routines, alarmTime, isAlarmEnabled, activeTask]);
 
   // Triggers for browser evaluation center
-  const runBuzzerDemoTester = () => {
+  const runBuzzerDemoTester = React.useCallback(() => {
     let count = 0;
     const interval = setInterval(() => {
       playSoundAlarmBeep();
       count++;
       if (count >= 3) clearInterval(interval);
     }, 550);
-  };
+  }, []);
 
-  const runSpeechDemoTester = () => {
+  const runSpeechDemoTester = React.useCallback(() => {
     speakVoiceAnnouncement("Acoustic synthesis complete. Prince Engine operations are fully active and calibrated!");
-  };
+  }, []);
 
   const dismissAlarmTrigger = () => {
     setIsAlarmActive(false);
     window.speechSynthesis.cancel();
   };
 
-  const loadDemoSequences = () => {
+  const loadDemoSequences = React.useCallback(() => {
     setRoutines(DEFAULT_ROUTINES);
-  };
+  }, []);
 
   // Select tone styling based on current Jarvis settings
   const getJarvisThemeClass = () => {
@@ -356,192 +366,100 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-[100dvh] flex flex-col md:flex-row transition-all duration-300 ${getJarvisThemeClass()} ${
-      isThemeLight 
-        ? 'bg-slate-100 text-slate-800' 
-        : 'bg-slate-950 text-slate-100'
-    }`}>
-      
-      {/* Sidebar navigation system layout */}
-      <aside className={`w-full md:w-64 flex-shrink-0 md:min-h-[100dvh] border-b md:border-b-0 md:border-r transition-all duration-300 z-10 ${
+    <>
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, filter: 'blur(20px)' }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black overflow-hidden"
+          >
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-500/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/30 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+            
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.8, type: 'spring' }}
+              className="relative z-10 flex flex-col items-center"
+            >
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/[0.05] border border-white/[0.08] backdrop-blur-2xl flex items-center justify-center shadow-2xl mb-8">
+                <Sparkles className="w-12 h-12 text-white" />
+              </div>
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tighter text-white mb-3">JARVIS</h1>
+              <p className="text-white/50 tracking-widest uppercase text-sm font-semibold">Premium Intelligence</p>
+              
+              <div className="mt-12 flex gap-2">
+                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className={`min-h-[100dvh] flex flex-col transition-all duration-300 ${getJarvisThemeClass()} ${
         isThemeLight 
-          ? 'bg-white border-slate-200 shadow-md' 
-          : 'bg-slate-900/60 border-slate-900 shadow-2xl'
-      } ${currentView === 'jarvis' ? 'hidden md:flex' : ''}`}>
-        <div className="p-5 flex items-center justify-between border-b border-slate-800/10">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">👑</span>
-            <div className="leading-none">
-              <h1 className="text-sm font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">
-                PRINCE ENGINE
-              </h1>
-              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-violet-400">
-                V5 · ULTIMATE AI
-              </span>
-            </div>
-          </div>
+          ? 'bg-[#f5f5f7] text-[#1d1d1f]' 
+          : 'bg-[#000000] text-slate-100'
+      }`}>
+      
+      {/* Background Ambient Layers */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {!isThemeLight && (
+           <>
+             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full mix-blend-screen filter blur-[80px] opacity-20 bg-gradient-to-br from-sky-400 to-blue-600 will-change-transform transform-gpu" />
+             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full mix-blend-screen filter blur-[80px] opacity-20 bg-gradient-to-tr from-violet-400 to-fuchsia-600 will-change-transform transform-gpu" />
+           </>
+        )}
+        <div className={`absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] ${isThemeLight ? 'opacity-10 mix-blend-multiply' : 'opacity-20 brightness-100 contrast-150 mix-blend-overlay'}`}></div>
+      </div>
 
-          <div className="flex items-center gap-2 md:hidden">
-            <button
-              onClick={() => setIsThemeLight(!isThemeLight)}
-              className="p-1.5 rounded-lg border border-slate-800 flex items-center justify-center hover:bg-slate-800"
-            >
-              {isThemeLight ? <Moon className="w-4 h-4 text-slate-600" /> : <Sun className="w-4 h-4 text-amber-450" />}
-            </button>
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-1.5 rounded-lg border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-white"
-            >
-              {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Sidebar Nav items wrapper */}
-        <nav className={`p-4 space-y-1.5 flex-col md:flex w-full ${
-          isMobileMenuOpen ? 'flex border-b border-slate-800/20' : 'hidden md:flex'
-        }`}>
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-sky-450' },
-            { id: 'routine', label: 'Daily Routine', icon: Sliders, color: 'text-indigo-400' },
-            { id: 'goals', label: 'Goals Matrix', icon: Target, color: 'text-emerald-450' },
-            { id: 'focus', label: 'Focus Mode', icon: BrainCircuit, color: 'text-amber-500' },
-            { id: 'calendar', label: 'Calendar AD/BS', icon: CalendarIcon, color: 'text-amber-500' },
-            { id: 'jarvis', label: 'Jarvis Ultra X', icon: Bot, color: 'text-cyan-400', specialBorder: true },
-            { id: 'tools', label: 'Utilities & Timer', icon: FileText, color: 'text-violet-400' },
-            { id: 'music', label: 'Audio Beats', icon: Music, color: 'text-rose-450' },
-          ].map((item) => {
-            const Icon = item.icon;
-            const isSelected = currentView === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setCurrentView(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer border ${
-                  isSelected
-                    ? isThemeLight
-                      ? 'bg-slate-100 border-slate-350 text-sky-650 shadow-sm font-black'
-                      : 'bg-sky-500/[0.04] border-sky-505/25 text-sky-400'
-                    : item.specialBorder
-                    ? 'border-cyan-400/20 hover:border-cyan-400/50 text-cyan-400/80 hover:text-cyan-400'
-                    : isThemeLight
-                    ? 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-805'
-                    : 'border-transparent text-slate-400 hover:bg-slate-900/40 hover:text-white'
-                }`}
-              >
-                <Icon className={`w-4.5 h-4.5 ${isSelected ? item.color : 'text-slate-500'}`} />
-                {item.label}
-              </button>
-            );
-          })}
-
-          {/* Quick theme toggler control inside sidebar */}
-          <div className="pt-4 border-t border-slate-800/20 mt-4 space-y-2">
-            <button
-              onClick={() => setIsThemeLight(!isThemeLight)}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 border border-slate-800 hover:border-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer hover:bg-slate-900/20 text-slate-400 hover:text-white"
-            >
-              {isThemeLight ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
-              {isThemeLight ? 'Dark Matrix Mode' : 'Light Theme'}
-            </button>
-          </div>
-        </nav>
-      </aside>
-
-      {/* Main Panel Core screen space */}
-      <main className={`flex-1 flex flex-col min-w-0 ${currentView !== 'jarvis' ? 'md:h-screen md:overflow-y-auto' : ''}`}>
+      <main className={`flex-1 flex flex-col min-w-0 relative z-10 ${currentView !== 'jarvis' ? 'h-[100dvh] overflow-y-auto overflow-x-hidden' : ''}`}>
         
         {currentView !== 'jarvis' && (
           <>
-            {/* Urgent Warning Banner notification for alarms */}
             <AnimatePresence>
               {isAlarmActive && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="bg-gradient-to-r from-rose-600 to-amber-655 text-white font-bold px-6 py-4.5 shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4 z-40 border-b border-rose-500/20"
+                  className="bg-gradient-to-r from-rose-500 to-orange-500 text-white px-6 py-4 relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4 z-40"
                 >
                   <div className="flex items-center gap-3">
-                    <AlertOctagon className="w-6 h-6 animate-bounce" />
+                    <AlertOctagon className="w-6 h-6 animate-pulse" />
                     <div className="text-center sm:text-left">
-                      <h4 className="text-sm font-extrabold uppercase tracking-widest text-white">
-                        ⚠️ ALARM SEQUENCE IN PROCESS
+                      <h4 className="text-sm font-bold uppercase tracking-widest">
+                        ALARM TRIGGERED
                       </h4>
-                      <p className="text-[11px] opacity-90 font-mono mt-0.5">
-                        Triggered wake-up buzzer sequence. Time: {currentTime.toLocaleTimeString()}
+                      <p className="text-[11px] opacity-90 mt-0.5 font-medium">
+                        Time: {currentTime.toLocaleTimeString()}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={dismissAlarmTrigger}
-                    className="bg-white text-rose-600 hover:bg-slate-100 font-extrabold text-xs px-5 py-2 rounded-xl transition-all shadow active:scale-95 cursor-pointer uppercase tracking-wider flex items-center gap-1.5"
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-xs px-5 py-2.5 rounded-full transition-all active:scale-95 cursor-pointer uppercase tracking-wider flex items-center gap-1.5"
                   >
                     <XCircle className="w-4 h-4" />
-                    Dismiss Alarm
+                    Dismiss
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Dashboard Top bar view indicator HUD */}
-            <header className={`px-6 py-5 border-b border-slate-800/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-              isThemeLight ? 'bg-white' : 'bg-slate-950/20'
-            }`}>
-              <div>
-                <h2 className="text-lg font-black tracking-tight uppercase font-sans text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                  PRINCE COMMAND EXECUTIVE COCKPIT
-                </h2>
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-mono">
-                  Workspace & Active Schedulers • Viewing {currentView}
-                </p>
-              </div>
-
-              <div className="inline-flex items-center gap-2 text-[10px] font-mono leading-none tracking-widest font-bold py-2 px-4 rounded-full border bg-emerald-500/10 border-emerald-500/35 text-emerald-400 w-fit self-start uppercase">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-dot" />
-                Engine Active
-              </div>
-            </header>
-
-            {/* Active main screen tabs container with frame animation wrapper */}
-            <section className="flex-grow p-6 md:p-8 space-y-6">
-              
-              {/* Global Gamification level-container block HUD */}
-              <div className="w-full max-w-6xl mx-auto">
-                <div className={`border rounded-2xl p-4.5 shadow-md relative overflow-hidden transition-all duration-300 ${
-                  isThemeLight ? 'bg-white border-slate-200' : 'bg-slate-900/30 border-slate-800/80'
-                }`}>
-                  {/* background ambient blur */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-violet-400/5 rounded-full blur-2xl pointer-events-none" />
-                  
-                  <div className="flex justify-between items-center mb-2 font-mono text-[11px] font-extrabold tracking-wider">
-                    <span className="text-sky-400 uppercase flex items-center gap-1">
-                      👑 PRINCE COGNITION STAGE: LEVEL {currentLevel}
-                    </span>
-                    <span className="text-slate-500">
-                      {currentXP} / {currentLevel * 500} XP
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-850">
-                    <div
-                      className="bg-gradient-to-r from-violet-500 to-sky-400 h-full transition-all duration-500"
-                      style={{ width: `${(currentXP / (currentLevel * 500)) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
+            <section className="flex-grow pb-32">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentView}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.18 }}
-                  className="w-full max-w-6xl mx-auto"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.4, type: 'spring', bounce: 0 }}
+                  className="w-full max-w-4xl mx-auto"
                 >
                   {currentView === 'dashboard' && (
                     <Dashboard
@@ -606,28 +524,13 @@ export default function App() {
                 </motion.div>
               </AnimatePresence>
             </section>
-
-            {/* Bottom signature block */}
-            <footer className={`py-6 text-center text-slate-500 border-t border-slate-800/10 pb-24 md:pb-6 ${
-              isThemeLight ? 'bg-slate-50' : 'bg-slate-950/20'
-            }`}>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#a78bfa] font-mono leading-none">
-                PRINCE ENGINE OPERATIONAL
-              </h3>
-              <p className="text-[10px] text-slate-600 mt-1 uppercase tracking-widest font-mono">
-                Designed for Ultimate Productivity Execution Cockpit
-              </p>
-            </footer>
           </>
         )}
 
         {currentView === 'jarvis' && (
           <div className="flex-1 w-full h-[100dvh]">
             <Jarvis
-              onNavigate={(v) => {
-                setCurrentView(v);
-                setIsMobileMenuOpen(false);
-              }}
+              onNavigate={(v) => setCurrentView(v)}
               selectedTheme={jarvisTheme}
               onChangeTheme={setJarvisTheme}
               isThemeLight={isThemeLight}
@@ -638,46 +541,84 @@ export default function App() {
 
       </main>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Floating Premium Bottom Navigation */}
       {currentView !== 'jarvis' && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 bg-slate-950/80 backdrop-blur-xl border-t border-slate-800/50 flex justify-between items-center">
-          {[
-            { id: 'dashboard', icon: LayoutDashboard },
-            { id: 'routine', icon: Sliders },
-            { id: 'focus', icon: BrainCircuit },
-            { id: 'goals', icon: Target },
-            { id: 'music', icon: Music },
-          ].map((item) => {
-            const isSelected = currentView === item.id;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentView(item.id)}
-                className={`p-3 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                  isSelected
-                    ? 'bg-sky-500/10 text-sky-400 scale-110 shadow-[0_0_15px_rgba(14,165,233,0.2)]'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                <Icon className="w-6 h-6" />
-              </button>
-            );
-          })}
-        </div>
-      )}
+        <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+          <div className={`pointer-events-auto flex items-center justify-between gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border
+            ${isThemeLight ? 'bg-white/70 border-black/5 shadow-black/5' : 'bg-[#18181b]/80 border-white/10 shadow-black/50'}
+          `}>
+            {[
+              { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
+              { id: 'routine', icon: Sliders, label: 'Routine' },
+            ].map((item) => {
+              const isSelected = currentView === item.id;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  className={`relative p-3.5 sm:px-5 sm:py-3.5 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
+                    isSelected
+                      ? isThemeLight ? 'text-black' : 'text-white'
+                      : isThemeLight ? 'text-black/40 hover:text-black/70 hover:bg-black/5' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                  }`}
+                >
+                  {isSelected && (
+                    <motion.div 
+                      layoutId="bottom-nav-indicator"
+                      className={`absolute inset-0 rounded-full z-0 ${isThemeLight ? 'bg-black/5' : 'bg-white/10'}`}
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 relative z-10 transition-transform duration-300 group-hover:scale-110" strokeWidth={isSelected ? 2.5 : 2} />
+                </button>
+              );
+            })}
+            
+            {/* FAB Middle Button */}
+            <button
+              onClick={() => setCurrentView('jarvis')}
+              className={`relative mx-1 sm:mx-2 p-4 sm:p-5 rounded-full flex items-center justify-center transition-all duration-500 group shadow-lg
+                ${isThemeLight 
+                  ? 'bg-black text-white hover:bg-gray-800 hover:shadow-xl hover:-translate-y-1' 
+                  : 'bg-white text-black hover:bg-gray-200 hover:shadow-white/20 hover:-translate-y-1'
+                }
+              `}
+            >
+              <Bot className="w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-300 group-hover:scale-110" strokeWidth={2.5} />
+            </button>
 
-      {/* Floating Jarvis Action Button (Mobile) */}
-      {currentView !== 'jarvis' && (
-        <div className="md:hidden fixed bottom-24 right-4 z-50">
-          <button
-            onClick={() => setCurrentView('jarvis')}
-            className="w-14 h-14 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-transform hover:scale-110 active:scale-95 border-2 border-cyan-400"
-          >
-            <Bot className="w-7 h-7" />
-          </button>
+            {[
+              { id: 'goals', icon: Target, label: 'Goals' },
+              { id: 'tools', icon: Settings, label: 'Settings' }, // mapped tools to settings icon visually
+            ].map((item) => {
+              const isSelected = currentView === item.id;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  className={`relative p-3.5 sm:px-5 sm:py-3.5 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
+                    isSelected
+                      ? isThemeLight ? 'text-black' : 'text-white'
+                      : isThemeLight ? 'text-black/40 hover:text-black/70 hover:bg-black/5' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                  }`}
+                >
+                  {isSelected && (
+                    <motion.div 
+                      layoutId="bottom-nav-indicator"
+                      className={`absolute inset-0 rounded-full z-0 ${isThemeLight ? 'bg-black/5' : 'bg-white/10'}`}
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 relative z-10 transition-transform duration-300 group-hover:scale-110" strokeWidth={isSelected ? 2.5 : 2} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
+    </>
   );
 }

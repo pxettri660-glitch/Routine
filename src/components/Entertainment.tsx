@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, SkipForward, Music, Upload, VolumeX, Volume2, ListMusic, Sparkles } from 'lucide-react';
+import { Play, Pause, SkipForward, Music, Upload, VolumeX, Volume2, ListMusic, Sparkles, AudioWaveform, Waves, CloudRain, Disc } from 'lucide-react';
 import { AudioTrack } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface EntertainmentProps {
   loadedTracks: AudioTrack[];
@@ -12,7 +13,7 @@ interface EntertainmentProps {
   setIsPlaying: (playing: boolean) => void;
 }
 
-export default function Entertainment({
+const Entertainment = React.memo(function Entertainment({
   loadedTracks,
   onUploadTracks,
   audioElementRef,
@@ -26,25 +27,18 @@ export default function Entertainment({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const animationRef = useRef<number | null>(null);
 
-  // Web Audio synth modules
   const synthAudioCtxRef = useRef<AudioContext | null>(null);
   const synthOscillatorRef = useRef<OscillatorNode | null>(null);
-  const synthBiquadFilterRef = useRef<BiquadFilterNode | null>(null);
-  const synthGainNodeRef = useRef<GainNode | null>(null);
 
-  // Stop synthetic audio when component unmounts
   useEffect(() => {
     return () => {
       stopSynthAtmosphere();
     };
   }, []);
 
-  // Web Audio Atmosphere synthesizers for offline study beats
   const startSynthAtmosphere = (type: 'alpha' | 'rain' | 'lofi') => {
-    // Stop existing synth first
     stopSynthAtmosphere();
 
-    // Pause normal audio player if playing
     if (audioElementRef.current) {
       audioElementRef.current.pause();
       setIsPlaying(false);
@@ -59,17 +53,15 @@ export default function Entertainment({
       const gain = ctx.createGain();
 
       if (type === 'alpha') {
-        // Binaural beat synthesis - creates focus wave
         const oscLeft = ctx.createOscillator();
         const oscRight = ctx.createOscillator();
         const pannerLeft = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
         const pannerRight = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
 
         oscLeft.type = 'sine';
-        oscLeft.frequency.setValueAtTime(200, ctx.currentTime); // Base Carrier (left)
-        
+        oscLeft.frequency.setValueAtTime(200, ctx.currentTime);
         oscRight.type = 'sine';
-        oscRight.frequency.setValueAtTime(212, ctx.currentTime); // Carrier + Alpha gap (12Hz) for right
+        oscRight.frequency.setValueAtTime(212, ctx.currentTime);
 
         gain.gain.setValueAtTime(0.18, ctx.currentTime);
 
@@ -85,10 +77,8 @@ export default function Entertainment({
 
         oscLeft.start();
         oscRight.start();
-
-        synthOscillatorRef.current = oscLeft; // Hold onto left osc to destroy later
+        synthOscillatorRef.current = oscLeft;
       } else if (type === 'rain') {
-        // Synthesise deep ambient brownian/white background sound
         const bufferSize = 2 * ctx.sampleRate;
         const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
@@ -96,10 +86,9 @@ export default function Entertainment({
         
         for (let i = 0; i < bufferSize; i++) {
           const white = Math.random() * 2 - 1;
-          // Brownian low-pass filter formula
           output[i] = (lastOut + (0.02 * white)) / 1.02;
           lastOut = output[i];
-          output[i] *= 3.5; // Gain coefficient
+          output[i] *= 3.5;
         }
 
         const whiteNoise = ctx.createBufferSource();
@@ -108,24 +97,19 @@ export default function Entertainment({
 
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(800, ctx.currentTime);
-
         gain.gain.setValueAtTime(0.25, ctx.currentTime);
 
         whiteNoise.connect(filter).connect(gain);
         whiteNoise.start();
-
-        // Hold references
         (synthOscillatorRef as any).current = whiteNoise;
       } else if (type === 'lofi') {
-        // Lo-fi vinyl crackle + deep rhythmic pad synth
         const osc = ctx.createOscillator();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(110, ctx.currentTime); // Deep A2 note
+        osc.frequency.setValueAtTime(110, ctx.currentTime);
 
-        // LFO volume modulation (simulates tape warble)
         const lfo = ctx.createOscillator();
         const lfoGain = ctx.createGain();
-        lfo.frequency.value = 6; // Hz
+        lfo.frequency.value = 6;
         lfoGain.gain.value = 0.03;
 
         lfo.connect(lfoGain);
@@ -134,32 +118,24 @@ export default function Entertainment({
 
         filter.type = 'peaking';
         filter.frequency.setValueAtTime(350, ctx.currentTime);
-
         gain.gain.setValueAtTime(0.12, ctx.currentTime);
 
         osc.connect(filter).connect(gain);
         osc.start();
-
         synthOscillatorRef.current = osc;
       }
 
       gain.connect(ctx.destination);
-      synthGainNodeRef.current = gain;
-      synthBiquadFilterRef.current = filter;
       setSynthType(type);
-
-      // Start the animated spectrum simulation on canvas
       animateSpectrum();
     } catch (e) {
-      console.warn('Audio Synthesis not fully supported or blocked by user gesture.', e);
+      console.warn('Audio Synthesis blocked.', e);
     }
   };
 
   const stopSynthAtmosphere = () => {
     if (synthOscillatorRef.current) {
-      try {
-        synthOscillatorRef.current.stop();
-      } catch {}
+      try { synthOscillatorRef.current.stop(); } catch {}
       synthOscillatorRef.current = null;
     }
     if (synthAudioCtxRef.current) {
@@ -172,7 +148,6 @@ export default function Entertainment({
     }
   };
 
-  // Canvas visualizer simulation
   const animateSpectrum = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -185,341 +160,245 @@ export default function Entertainment({
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Neon visual spectrum spikes
-      ctx.lineWidth = 2.5;
-      const barCount = 38;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      
+      const barCount = 32;
       const spacing = width / barCount;
-      const now = Date.now() * 0.01;
+      const now = Date.now() * 0.005;
 
       for (let i = 0; i < barCount; i++) {
         const x = i * spacing + spacing / 2;
-        // Generate pseudo amplitude using sine waves
-        let amplitude = Math.sin(now + i * 0.15) * 22 + Math.cos(now * 0.6 + i * 0.3) * 14;
-        if (!isPlaying && !synthType) {
-          amplitude = 2; // Flat line
-        } else {
-          amplitude = Math.abs(amplitude) + 5;
+        let amplitude = 4;
+        
+        if (isPlaying || synthType) {
+          amplitude = Math.abs(Math.sin(now + i * 0.2)) * 30 + Math.abs(Math.cos(now * 0.5 + i * 0.1)) * 20;
         }
 
-        if (amplitude > height - 10) amplitude = height - 15;
+        const gradient = ctx.createLinearGradient(x, height / 2 - amplitude, x, height / 2 + amplitude);
+        gradient.addColorStop(0, '#8b5cf6');
+        gradient.addColorStop(0.5, '#ec4899');
+        gradient.addColorStop(1, '#f43f5e');
 
-        // Gradient line colors
-        const grad = ctx.createLinearGradient(x, height, x, height - amplitude);
-        grad.addColorStop(0, '#10b981'); // Emerald
-        grad.addColorStop(0.5, '#06b6d4'); // Cyan
-        grad.addColorStop(1, '#a78bfa'); // Violet
-
-        ctx.strokeStyle = grad;
+        ctx.strokeStyle = gradient;
         ctx.beginPath();
-        ctx.moveTo(x, height);
-        ctx.lineTo(x, height - amplitude);
+        ctx.moveTo(x, height / 2 - amplitude);
+        ctx.lineTo(x, height / 2 + amplitude);
         ctx.stroke();
       }
-
       animationRef.current = requestAnimationFrame(draw);
     };
-
     draw();
   };
 
-  // Run initial spectrum wave draw
   useEffect(() => {
-    animateSpectrum();
-    return () => {
+    if (isPlaying && !synthType) {
+      animateSpectrum();
+    } else if (!isPlaying && !synthType) {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
+      const canvas = canvasRef.current;
+      if (canvas) {
+         const ctx = canvas.getContext('2d');
+         ctx?.clearRect(0, 0, canvas.width, canvas.height);
+         ctx!.lineWidth = 3;
+         ctx!.strokeStyle = '#ffffff20';
+         ctx?.beginPath();
+         ctx?.moveTo(0, canvas.height / 2);
+         ctx?.lineTo(canvas.width, canvas.height / 2);
+         ctx?.stroke();
+      }
+    }
   }, [isPlaying, synthType]);
 
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const newTracks: AudioTrack[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const url = URL.createObjectURL(file);
-      newTracks.push({
-        id: `uploaded-${Date.now()}-${i}`,
-        name: file.name.replace(/\.[^/.]+$/, ""), // Strip extension
-        url: url,
-      });
-    }
-
-    if (newTracks.length > 0) {
-      onUploadTracks([...newTracks, ...loadedTracks]);
-      // Play first uploaded track
-      setCurrentTrackIndex(0);
-      setIsPlaying(true);
-      stopSynthAtmosphere(); // Stop ambient generator
-      
-      // Delay slightly to allow state to bind
-      setTimeout(() => {
-        if (audioElementRef.current) {
-          audioElementRef.current.play().catch(() => {});
-        }
-      }, 100);
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      const newTracks: AudioTrack[] = files.map(file => ({
+        id: Date.now().toString() + Math.random().toString(),
+        name: file.name.replace(/\.[^/.]+$/, ""),
+        url: URL.createObjectURL(file),
+      }));
+      onUploadTracks(newTracks);
     }
   };
 
-  const selectAndPlayTrack = (index: number) => {
-    stopSynthAtmosphere(); // Mute background generators
+  const playTrack = (index: number) => {
+    stopSynthAtmosphere();
     setCurrentTrackIndex(index);
     setIsPlaying(true);
-    setTimeout(() => {
-      if (audioElementRef.current) {
-        audioElementRef.current.play().catch(() => {});
-      }
-    }, 100);
   };
 
-  const togglePrimaryPlayback = () => {
-    if (loadedTracks.length === 0) {
-      fileInputRef.current?.click();
-      return;
-    }
-
-    stopSynthAtmosphere();
-    if (isPlaying) {
-      audioElementRef.current?.pause();
-      setIsPlaying(false);
-    } else {
-      audioElementRef.current?.play().catch(() => {});
-      setIsPlaying(true);
-    }
+  const toggleLocalPlay = () => {
+    if (synthType) stopSynthAtmosphere();
+    setIsPlaying(!isPlaying);
   };
 
-  const skipTrack = (direction: 'next' | 'prev') => {
+  const nextLocalTrack = () => {
     if (loadedTracks.length === 0) return;
-    stopSynthAtmosphere();
-
-    let nextIndex = currentTrackIndex;
-    if (direction === 'next') {
-      nextIndex = (currentTrackIndex + 1) % loadedTracks.length;
-    } else {
-      nextIndex = (currentTrackIndex - 1 + loadedTracks.length) % loadedTracks.length;
-    }
-
-    setCurrentTrackIndex(nextIndex);
-    setIsPlaying(true);
-
-    setTimeout(() => {
-      if (audioElementRef.current) {
-        audioElementRef.current.play().catch(() => {});
-      }
-    }, 100);
+    setCurrentTrackIndex((currentTrackIndex + 1) % loadedTracks.length);
   };
-
-  const activeTrack = loadedTracks[currentTrackIndex];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
-      {/* Visual Deck & Controls */}
-      <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-violet-500/30">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold tracking-wider text-slate-400 flex items-center gap-1.5 uppercase">
-            <Music className="w-4 h-4 text-violet-400 animate-spin" />
-            SOUND SYSTEM CONSOLE
+    <motion.div 
+      className="space-y-6 sm:space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
+            <Music className="w-8 h-8 text-rose-500" />
+            Media
+          </h2>
+          <p className="text-sm font-medium opacity-60 tracking-wide uppercase">Audio & Frequencies</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Synth Control Panel */}
+        <div className="p-6 sm:p-8 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
+            <AudioWaveform className="w-4 h-4 text-rose-500" /> Neural Synth
           </h3>
-          <span className="text-[10px] font-mono text-slate-500 uppercase">
-            Web Audio Deck V1.5
-          </span>
+
+          <div className="space-y-4">
+             {[
+               { id: 'alpha', icon: Waves, title: 'Alpha Binaural', desc: '40Hz Focus Frequency', color: 'indigo' },
+               { id: 'rain', icon: CloudRain, title: 'Deep Brownian', desc: 'Filtered Ambient Noise', color: 'emerald' },
+               { id: 'lofi', icon: Disc, title: 'Analog Lofi', desc: 'Vinyl crackle & warmth', color: 'orange' }
+             ].map((synth) => {
+               const isActive = synthType === synth.id;
+               return (
+                 <button
+                   key={synth.id}
+                   onClick={() => isActive ? stopSynthAtmosphere() : startSynthAtmosphere(synth.id as any)}
+                   className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 border ${
+                     isActive 
+                       ? `bg-${synth.color}-500/10 border-${synth.color}-500/30 ring-1 ring-${synth.color}-500/20` 
+                       : 'bg-black/5 dark:bg-white/5 border-transparent hover:border-black/5 dark:hover:border-white/10 hover:bg-black/10 dark:hover:bg-white/10'
+                   }`}
+                 >
+                   <div className="flex items-center gap-4">
+                     <div className={`p-3 rounded-xl ${isActive ? `bg-${synth.color}-500 text-white shadow-lg` : 'bg-black/5 dark:bg-white/10'}`}>
+                       <synth.icon className="w-5 h-5" />
+                     </div>
+                     <div className="text-left">
+                       <h4 className="font-bold text-sm">{synth.title}</h4>
+                       <p className="text-[10px] sm:text-xs opacity-60 mt-0.5">{synth.desc}</p>
+                     </div>
+                   </div>
+                   <div className={`w-3 h-3 rounded-full ${isActive ? `bg-${synth.color}-500 animate-pulse` : 'bg-black/20 dark:bg-white/20'}`} />
+                 </button>
+               )
+             })}
+          </div>
         </div>
 
-        {/* Oscillating Sound Wave Visualizer Core Canvas */}
-        <div className="bg-slate-950 rounded-xl border border-slate-800/80 p-3 h-28 flex items-end relative overflow-hidden mb-5">
-          <div className="absolute top-2 right-3 font-mono text-[9px] text-emerald-400/70 select-none uppercase tracking-widest flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-            Stereo Spectrum Output
-          </div>
-          <canvas
-            ref={canvasRef}
-            className="w-full h-full"
-            width="400"
-            height="100"
-          />
-        </div>
+        {/* Local Player */}
+        <div className="p-6 sm:p-8 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
+              <ListMusic className="w-4 h-4 text-purple-500" /> Local Player
+            </h3>
 
-        {/* Core Deck Playback controllers */}
-        <div className="space-y-4">
-          <div className="text-center sm:text-left">
-            <div className="text-xs uppercase font-bold tracking-widest text-violet-400">
-              {synthType ? 'Atmosphere Engine Active' : 'PCM Audio stream'}
-            </div>
-            <h4 className="text-base font-bold text-white truncate mt-1">
-              {synthType
-                ? `Focus Generator: ${synthType === 'alpha' ? 'Alpha Binaural' : synthType === 'rain' ? 'Brownian Rain' : 'Vinyl Lofi'}`
-                : activeTrack
-                ? activeTrack.name
-                : 'No track loaded. Connect local files below.'}
-            </h4>
-          </div>
-
-          {/* HTML5 audio element wrapper */}
-          <div className="hidden">
-            <audio
-              ref={audioElementRef}
-              src={activeTrack?.url}
-              controls
-              onEnded={() => skipTrack('next')}
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-800/60">
-            {/* Playback action keys */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => skipTrack('prev')}
-                disabled={loadedTracks.length === 0}
-                className="p-2.5 bg-slate-950 hover:bg-slate-800 disabled:opacity-40 rounded-xl transition-all border border-slate-800 cursor-pointer"
-              >
-                <SkipForward className="w-4 h-4 text-slate-350 transform rotate-180" />
-              </button>
-
-              <button
-                onClick={togglePrimaryPlayback}
-                className="w-12 h-12 bg-violet-500 hover:bg-violet-400 text-slate-950 font-black rounded-full transition-all flex items-center justify-center shadow-lg hover:shadow-violet-500/20 active:scale-95 cursor-pointer"
-              >
-                {isPlaying ? <Pause className="w-5 h-5 text-slate-950 fill-slate-950" /> : <Play className="w-5 h-5 text-slate-950 fill-slate-950 ml-0.5" />}
-              </button>
-
-              <button
-                onClick={() => skipTrack('next')}
-                disabled={loadedTracks.length === 0}
-                className="p-2.5 bg-slate-950 hover:bg-slate-800 disabled:opacity-40 rounded-xl transition-all border border-slate-800 cursor-pointer"
-              >
-                <SkipForward className="w-4 h-4 text-slate-350" />
-              </button>
+            <div className="w-full h-32 bg-black/5 dark:bg-white/5 rounded-2xl flex items-center justify-center p-4 border border-black/10 dark:border-white/5 overflow-hidden">
+              <canvas ref={canvasRef} width={400} height={100} className="w-full h-full opacity-80" />
             </div>
 
-            {/* Quick-import triggers */}
-            <div className="flex flex-wrap gap-2.5 justify-center">
-              <button
+            <div className="mt-8 flex flex-col items-center">
+              <h4 className="text-xl font-bold tracking-tight truncate w-full text-center">
+                {loadedTracks.length > 0 && currentTrackIndex >= 0 
+                  ? loadedTracks[currentTrackIndex].name 
+                  : (synthType ? `${synthType.toUpperCase()} SYNTH ACTIVE` : 'No Media Playing')}
+              </h4>
+              <p className="text-sm opacity-50 mt-1">
+                 {loadedTracks.length > 0 && currentTrackIndex >= 0 ? `Track ${currentTrackIndex + 1} of ${loadedTracks.length}` : 'System Output'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 flex items-center justify-center gap-6">
+             <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-xs font-bold text-slate-350 border border-slate-850 rounded-xl transition-all cursor-pointer active:scale-95"
+                className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
               >
-                <Upload className="w-3.5 h-3.5 text-slate-400" />
-                Upload MP3s
+                <Upload className="w-5 h-5 opacity-70" />
               </button>
-              <input
+              <input 
+                type="file" 
                 ref={fileInputRef}
-                type="file"
+                accept="audio/*" 
                 multiple
-                accept="audio/*"
                 onChange={handleFileUpload}
                 className="hidden"
               />
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Atmospheric Focus Beats Center */}
-      <div className="lg:col-span-1 space-y-5">
-        
-        {/* Offline Binaural Generators */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 shadow-xl">
-          <h3 className="text-xs font-bold font-mono text-emerald-400 tracking-wider flex items-center gap-2 mb-3.5">
-            <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-            SYNTHETIC COGNITIVE BEATS
-          </h3>
-          <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
-            No focus local songs? Activate our real-time browser wave generators. Designed to boost concentration, sleep, study, and math analysis.
-          </p>
-
-          <div className="space-y-2">
-            <button
-              onClick={() => startSynthAtmosphere('alpha')}
-              className={`w-full p-3 rounded-xl border text-left text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                synthType === 'alpha'
-                  ? 'border-emerald-500/60 bg-emerald-500/[0.04] text-emerald-400 scale-102'
-                  : 'border-slate-800 bg-slate-950/20 hover:border-slate-700 text-slate-300'
-              }`}
-            >
-              <div>
-                <span className="block text-sm">🧠 Alpha Binaural Waves</span>
-                <span className="text-[10px] text-slate-500 block font-normal mt-0.5">Focus beat carrier offset 12Hz</span>
-              </div>
-              {synthType === 'alpha' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />}
-            </button>
-
-            <button
-              onClick={() => startSynthAtmosphere('rain')}
-              className={`w-full p-3 rounded-xl border text-left text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                synthType === 'rain'
-                  ? 'border-emerald-500/60 bg-emerald-500/[0.04] text-emerald-400 scale-102'
-                  : 'border-slate-800 bg-slate-950/20 hover:border-slate-700 text-slate-300'
-              }`}
-            >
-              <div>
-                <span className="block text-sm">🌧️ Brownian Rain ASMR</span>
-                <span className="text-[10px] text-slate-500 block font-normal mt-0.5">Deep continuous acoustic blocking</span>
-              </div>
-              {synthType === 'rain' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />}
-            </button>
-
-            <button
-              onClick={() => startSynthAtmosphere('lofi')}
-              className={`w-full p-3 rounded-xl border text-left text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                synthType === 'lofi'
-                  ? 'border-emerald-500/60 bg-emerald-500/[0.04] text-emerald-400 scale-102'
-                  : 'border-slate-800 bg-slate-950/20 hover:border-slate-700 text-slate-300'
-              }`}
-            >
-              <div>
-                <span className="block text-sm">🎵 Tape Warble Lofi</span>
-                <span className="text-[10px] text-slate-500 block font-normal mt-0.5">Warm vinyl crackle & rhythmic low chords</span>
-              </div>
-              {synthType === 'lofi' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />}
-            </button>
-
-            {synthType && (
               <button
-                onClick={stopSynthAtmosphere}
-                className="w-full text-center text-[10px] font-bold py-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/20 text-rose-400 transition-all cursor-pointer uppercase flex items-center justify-center gap-1 mt-2"
+                onClick={toggleLocalPlay}
+                disabled={loadedTracks.length === 0 && !synthType}
+                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all shadow-xl ${
+                  isPlaying || synthType
+                    ? 'bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-rose-500/30 hover:scale-105' 
+                    : 'bg-black/10 dark:bg-white/10 text-black dark:text-white hover:scale-105 opacity-50 hover:opacity-100 disabled:opacity-30 disabled:hover:scale-100 border border-black/10 dark:border-white/10'
+                }`}
               >
-                <VolumeX className="w-3.5 h-3.5" />
-                Stop Waves Generator
+                {isPlaying || synthType ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
               </button>
-            )}
-          </div>
-        </div>
 
-        {/* Loaded Playlist box */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 shadow-xl max-h-[190px] overflow-hidden flex flex-col">
-          <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mb-3 select-none">
-            <ListMusic className="w-4 h-4 text-slate-400" />
-            LOADED AUDIO QUEUE ({loadedTracks.length})
-          </h4>
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1.5 scroll-thin">
-            {loadedTracks.length === 0 ? (
-              <div className="text-[10px] text-slate-500 text-center py-6 leading-relaxed">
-                Your queue is empty.<br />Upload a few MP3 files above from your local folder.
-              </div>
-            ) : (
-              loadedTracks.map((track, i) => (
-                <div
-                  key={track.id}
-                  onClick={() => selectAndPlayTrack(i)}
-                  className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-all flex items-center justify-between group ${
-                    currentTrackIndex === i && !synthType
-                      ? 'border-violet-500/40 bg-violet-500/[0.04] text-violet-400 hover:bg-violet-500/[0.06] font-bold'
-                      : 'border-slate-850 bg-slate-950/20 hover:border-slate-800 hover:bg-slate-900/30 text-slate-400 hover:text-slate-350'
-                  }`}
-                >
-                  <span className="truncate pr-4 flex items-center gap-2">
-                    <span className="font-mono text-[10px] opacity-40">{String(i + 1).padStart(2, '0')}</span>
-                    {track.name}
-                  </span>
-                  <Play className="w-3.5 h-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </div>
-              ))
-            )}
+              <button
+                onClick={nextLocalTrack}
+                disabled={loadedTracks.length === 0 || !!synthType}
+                className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30"
+              >
+                <SkipForward className="w-5 h-5 opacity-70" />
+              </button>
           </div>
         </div>
 
       </div>
 
-    </div>
+      <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl">
+         <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-4 flex items-center gap-2">
+            <ListMusic className="w-4 h-4 text-purple-500" /> Track Queue
+         </h3>
+         {loadedTracks.length === 0 ? (
+           <div className="py-12 text-center opacity-40">
+             <Music className="w-8 h-8 mx-auto mb-3" />
+             <p className="text-sm font-bold">No tracks uploaded</p>
+           </div>
+         ) : (
+           <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+             {loadedTracks.map((track, i) => (
+               <div 
+                 key={track.id}
+                 onClick={() => playTrack(i)}
+                 className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-colors border ${currentTrackIndex === i && !synthType ? 'bg-black/10 dark:bg-white/10 border-black/10 dark:border-white/10' : 'bg-black/5 dark:bg-white/5 border-transparent hover:border-black/5 dark:hover:border-white/10'}`}
+               >
+                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTrackIndex === i && !synthType ? 'bg-gradient-to-br from-purple-500 to-rose-500 text-white' : 'bg-black/10 dark:bg-white/10'}`}>
+                    <Music className="w-4 h-4" />
+                 </div>
+                 <span className="font-bold text-sm truncate flex-1">{track.name}</span>
+                 {currentTrackIndex === i && !synthType && (
+                   <div className="flex gap-1">
+                     <span className="w-1 h-3 bg-purple-500 animate-pulse rounded-full" style={{ animationDelay: '0ms' }}></span>
+                     <span className="w-1 h-4 bg-rose-500 animate-pulse rounded-full" style={{ animationDelay: '150ms' }}></span>
+                     <span className="w-1 h-2 bg-orange-500 animate-pulse rounded-full" style={{ animationDelay: '300ms' }}></span>
+                   </div>
+                 )}
+               </div>
+             ))}
+           </div>
+         )}
+      </div>
+
+    </motion.div>
   );
-}
+});
+
+export default Entertainment;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Target, Plus, Check, Square, Trash2, ShieldAlert } from 'lucide-react';
+import { Target, Plus, Check, Square, Trash2, ShieldAlert, Award } from 'lucide-react';
 import { GoalItem } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface GoalsProps {
   goals: GoalItem[];
@@ -8,7 +9,7 @@ interface GoalsProps {
   onAwardXP: (amount: number) => void;
 }
 
-export default function Goals({ goals, onUpdateGoals, onAwardXP }: GoalsProps) {
+const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: GoalsProps) {
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<'academic' | 'coding' | 'fitness' | 'personal'>('academic');
   const [filter, setFilter] = useState<string>('all');
@@ -53,39 +54,42 @@ export default function Goals({ goals, onUpdateGoals, onAwardXP }: GoalsProps) {
   const getCategoryTheme = (category: string) => {
     switch (category) {
       case 'academic':
-        return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+        return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
       case 'coding':
-        return 'text-sky-400 bg-sky-500/10 border-sky-500/20';
+        return 'text-sky-500 bg-sky-500/10 border-sky-500/20';
       case 'fitness':
-        return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+        return 'text-rose-500 bg-rose-500/10 border-rose-500/20';
       default:
-        return 'text-violet-400 bg-violet-500/10 border-violet-500/20';
+        return 'text-violet-500 bg-violet-500/10 border-violet-500/20';
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <motion.div 
+      className="space-y-6 sm:space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-2">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Target className="text-emerald-400 w-5 h-5" />
-            CORE CRITICAL TARGET DIRECTIVES
+          <h2 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
+            <Target className="w-8 h-8 text-emerald-500" />
+            Goals
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Key milestones, assignments, workouts, and personal objectives.
-          </p>
+          <p className="text-sm font-medium opacity-60 tracking-wide uppercase">Your Daily Objectives</p>
         </div>
 
-        {/* Filter Navigation row */}
-        <div className="flex flex-wrap gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80">
+        <div className="flex flex-wrap gap-1 p-1 rounded-2xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10">
           {['all', 'active', 'completed', 'academic', 'coding', 'fitness'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1 text-xs font-bold rounded-lg uppercase tracking-wider transition-all cursor-pointer ${
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-bold rounded-xl uppercase tracking-wider transition-all duration-300 ${
                 filter === f
-                  ? 'bg-emerald-500 text-slate-950 shadow'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900/50'
+                  ? 'bg-white dark:bg-black text-black dark:text-white shadow-sm'
+                  : 'text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
               }`}
             >
               {f}
@@ -94,98 +98,112 @@ export default function Goals({ goals, onUpdateGoals, onAwardXP }: GoalsProps) {
         </div>
       </div>
 
-      {/* Goal creation Form layout */}
-      <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
-        <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-1.5">
-          <Plus className="w-4 h-4 text-emerald-400" /> Spawn New Directives
+      <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl overflow-hidden relative">
+        <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-4 flex items-center gap-2">
+          <Award className="w-4 h-4 text-emerald-500" /> Create Objective
         </h3>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col md:flex-row gap-3">
           <input
             type="text"
-            placeholder="Type task details like: Complete Maths pg 8..."
+            placeholder="e.g. Complete React tutorial..."
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addGoal()}
-            className="flex-1 bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+            className="flex-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
           />
-          <select
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value as any)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500 cursor-pointer"
-          >
-            <option value="academic">⚡ Academic / Study</option>
-            <option value="coding">💻 Coding consitency</option>
-            <option value="fitness">💪 Fitness / Sports</option>
-            <option value="personal">👑 Personal Project</option>
-          </select>
-          <button
-            onClick={addGoal}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-sm transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1"
-          >
-            Spawn
-          </button>
+          <div className="flex gap-3">
+            <select
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value as any)}
+              className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all cursor-pointer outline-none"
+            >
+              <option value="academic">Academic</option>
+              <option value="coding">Coding</option>
+              <option value="fitness">Fitness</option>
+              <option value="personal">Personal</option>
+            </select>
+            <button
+              onClick={addGoal}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Goal Items rendering list */}
-      <div className="space-y-2.5">
-        {filteredGoals.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 bg-slate-900/10 border border-dashed border-slate-800/65 rounded-xl text-slate-500 text-center space-y-2">
-            <h4 className="font-semibold text-slate-400">No matching directives found</h4>
-            <p className="text-xs">Adjust your status/category filter or spawn a new directive.</p>
-          </div>
-        ) : (
-          filteredGoals.map((g) => (
-            <div
-              key={g.id}
-              onClick={() => toggleGoal(g.id)}
-              className="flex items-center justify-between p-4 bg-slate-950/30 border border-slate-800/60 hover:border-slate-700/80 rounded-xl transition-all cursor-pointer group hover:bg-slate-900/10"
+      <div className="space-y-3">
+        <AnimatePresence mode="popLayout">
+          {filteredGoals.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center justify-center py-16 bg-black/5 dark:bg-white/5 border border-dashed border-black/10 dark:border-white/10 rounded-[2rem] text-center"
             >
-              <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                <button
-                  type="button"
-                  className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border flex-shrink-0 ${
-                    g.completed
-                      ? 'bg-emerald-500 border-emerald-400 text-slate-950 scale-102 shadow-sm'
-                      : 'border-slate-700 text-transparent group-hover:border-slate-500'
-                  }`}
-                >
-                  <Check className="w-4 h-4 font-black" />
-                </button>
-
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={`text-sm font-semibold truncate transition-all ${
-                      g.completed ? 'text-slate-500 line-through' : 'text-slate-200'
+              <Target className="w-12 h-12 opacity-20 mb-3" />
+              <h4 className="font-bold opacity-70">No goals found</h4>
+              <p className="text-sm opacity-50 mt-1">Add a new goal to get started</p>
+            </motion.div>
+          ) : (
+            filteredGoals.map((g) => (
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                key={g.id}
+                onClick={() => toggleGoal(g.id)}
+                className={`flex items-center justify-between p-4 sm:p-5 rounded-[1.5rem] backdrop-blur-2xl border transition-all duration-300 cursor-pointer group ${
+                  g.completed 
+                    ? 'bg-black/5 dark:bg-white/5 border-transparent opacity-60' 
+                    : 'bg-white/[0.03] border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 shadow-md hover:shadow-lg'
+                }`}
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div
+                    className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                      g.completed
+                        ? 'bg-emerald-500 text-white shadow-md scale-110'
+                        : 'bg-black/10 dark:bg-white/10 group-hover:bg-black/20 dark:group-hover:bg-white/20 text-transparent'
                     }`}
                   >
-                    {g.title}
-                  </p>
+                    <Check className="w-4 h-4" strokeWidth={3} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-[15px] font-semibold truncate transition-all duration-300 ${
+                        g.completed ? 'line-through opacity-70' : ''
+                      }`}
+                    >
+                      {g.title}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`hidden sm:inline-flex text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border flex-shrink-0 ${getCategoryTheme(g.category)}`}
+                  >
+                    {g.category}
+                  </span>
                 </div>
 
-                <span
-                  className={`text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded border flex-shrink-0 font-mono ${getCategoryTheme(
-                    g.category
-                  )}`}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteGoal(g.id);
+                  }}
+                  className="p-2 ml-4 text-black/30 dark:text-white/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors flex-shrink-0"
                 >
-                  {g.category}
-                </span>
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteGoal(g.id);
-                }}
-                className="p-1.5 ml-4 text-slate-600 hover:text-rose-400 rounded-lg hover:bg-slate-900 border border-transparent hover:border-slate-800 cursor-pointer transition-all flex-shrink-0"
-                title="Delete this directive"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))
-        )}
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
-}
+});
+
+export default Goals;

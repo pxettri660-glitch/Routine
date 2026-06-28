@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Plus, Trash2, Edit2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Calendar, Plus, Trash2, Edit2, RotateCcw, Activity, CalendarDays, Clock, Play } from 'lucide-react';
 import { RoutineItem } from '../types';
 
 interface RoutineProps {
@@ -10,20 +10,18 @@ interface RoutineProps {
   onResetToDefault: () => void;
 }
 
-export default function Routine({
+const Routine = React.memo(function Routine({
   routines,
   currentTask,
   onUpdateRoutines,
   onResetToDefault,
 }: RoutineProps) {
-  // Editing state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
   const [editDesc, setEditDesc] = useState('');
 
-  // Creation State
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newStart, setNewStart] = useState('12:00');
@@ -36,10 +34,6 @@ export default function Routine({
     setEditStart(item.start);
     setEditEnd(item.end);
     setEditDesc(item.desc);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
   };
 
   const saveEdit = (id: string) => {
@@ -75,7 +69,7 @@ export default function Routine({
   };
 
   const deleteItem = (id: string) => {
-    if (confirm('Are you sure you want to delete this sequence block?')) {
+    if (confirm('Delete this routine block?')) {
       const updated = routines.filter((r) => r.id !== id);
       onUpdateRoutines(updated);
     }
@@ -94,229 +88,243 @@ export default function Routine({
     }
   };
 
-  // Sort by start time chronological
   const sortedRoutines = [...routines].sort((a, b) => {
     return a.start.localeCompare(b.start);
   });
 
   return (
     <motion.div 
-      className="space-y-6"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3 }}
+      className="space-y-6 sm:space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-2">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Calendar className="text-sky-400 w-5 h-5" />
-            PROGRAMMED SEQUENCE TIMELINE
+          <h2 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
+            <CalendarDays className="w-8 h-8 text-indigo-500" />
+            Routine
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Dynamic timeline blocks tracking your core schedule.
-          </p>
+          <p className="text-sm font-medium opacity-60 tracking-wide uppercase">Your Daily Timeline</p>
         </div>
 
-        <div className="flex flex-wrap gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsCreating(!isCreating)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-bold text-sm rounded-2xl transition-all shadow-lg active:scale-95 cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-slate-950" />
-            Create Block
+            <Plus className="w-4 h-4" />
+            Add Block
           </button>
           
           <button
             onClick={onResetToDefault}
-            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all border border-slate-700 shadow-md active:scale-95 cursor-pointer"
+            className="p-2.5 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 backdrop-blur-md transition-colors border border-black/5 dark:border-white/10 rounded-2xl"
           >
             <RotateCcw className="w-4 h-4" />
-            Restore Default Default
           </button>
         </div>
       </div>
 
-      {/* Creation form */}
       <AnimatePresence>
         {isCreating && (
           <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl space-y-4 shadow-xl overflow-hidden"
+            initial={{ opacity: 0, height: 0, scale: 0.95 }}
+            animate={{ opacity: 1, height: 'auto', scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+            className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl overflow-hidden"
           >
-            <h3 className="text-sm font-semibold text-sky-400">Add New Sequence Block</h3>
+            <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-4 flex items-center gap-2">
+              <Plus className="w-4 h-4 text-indigo-500" /> New Block
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Title</label>
+                <label className="block text-xs font-bold opacity-60 uppercase mb-2">Title</label>
                 <input
                   type="text"
-                  placeholder="e.g. Coding Practice"
+                  placeholder="Focus Session"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                  className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Start Time</label>
+                  <label className="block text-xs font-bold opacity-60 uppercase mb-2">Start</label>
                   <input
                     type="time"
                     value={newStart}
                     onChange={(e) => setNewStart(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono"
+                    className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">End Time</label>
+                  <label className="block text-xs font-bold opacity-60 uppercase mb-2">End</label>
                   <input
                     type="time"
                     value={newEnd}
                     onChange={(e) => setNewEnd(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono"
+                    className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                   />
                 </div>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label>
+            <div className="mt-4">
+              <label className="block text-xs font-bold opacity-60 uppercase mb-2">Description</label>
               <input
                 type="text"
-                placeholder="Context or criteria for completion..."
+                placeholder="What will you accomplish?"
                 value={newDesc}
                 onChange={(e) => setNewDesc(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               />
             </div>
-            <div className="flex justify-end gap-2 text-xs pt-1">
+            <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setIsCreating(false)}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg font-bold"
+                className="px-5 py-2.5 rounded-xl font-bold text-sm bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createItem}
-                className="px-4 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg font-bold"
+                className="px-5 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-indigo-500/20"
               >
-                Add Schedule
+                Save Block
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Routine list blocks */}
-      <motion.div className="space-y-4" layout>
-        <AnimatePresence>
-          {sortedRoutines.map((item) => {
-            const isActive = currentTask?.id === item.id;
-            const isEditing = editingId === item.id;
+      <div className="relative">
+        {/* Timeline Line */}
+        <div className="absolute left-[38px] top-6 bottom-6 w-px bg-gradient-to-b from-indigo-500/0 via-indigo-500/20 to-indigo-500/0"></div>
 
-            return (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                key={item.id}
-                className={`transition-all duration-300 rounded-xl border p-4 backdrop-blur bg-slate-950/20 ${
-                  isActive
-                    ? 'border-emerald-500/80 bg-emerald-500/[0.04] shadow-lg shadow-emerald-500/10'
-                    : 'border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                {isEditing ? (
-                  /* Editable form block */
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-4">
+          {sortedRoutines.map((task) => {
+            const isActive = currentTask?.id === task.id;
+            const isEditing = editingId === task.id;
+
+            if (isEditing) {
+              return (
+                <div key={task.id} className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-indigo-500/30 shadow-xl ml-16 relative">
+                   <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center">
+                     <div className="w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-indigo-500/20"></div>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                       <input
                         type="text"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        className="bg-slate-900 border border-slate-800 text-sm rounded-lg px-3 py-1.5 text-white font-bold w-full focus:outline-none focus:border-sky-500"
+                        className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                       />
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="time"
-                          value={editStart}
-                          onChange={(e) => setEditStart(e.target.value)}
-                          className="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-1 text-white font-mono"
-                        />
-                        <span className="text-slate-600 text-xs">-</span>
-                        <input
-                          type="time"
-                          value={editEnd}
-                          onChange={(e) => setEditEnd(e.target.value)}
-                          className="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-1 text-white font-mono"
-                        />
-                      </div>
                     </div>
-                    <input
-                      type="text"
-                      value={editDesc}
-                      onChange={(e) => setEditDesc(e.target.value)}
-                      placeholder="Short description..."
-                      className="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-1.5 text-slate-300 w-full focus:outline-none focus:border-sky-500"
-                    />
-                    <div className="flex justify-end gap-2 text-xs pt-1">
-                      <button
-                        onClick={cancelEdit}
-                        className="px-2.5 py-1 bg-slate-850 hover:bg-slate-800 text-slate-400 rounded-lg"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => saveEdit(item.id)}
-                        className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg"
-                      >
-                        Save
-                      </button>
+                    <div className="flex gap-2">
+                      <input
+                        type="time"
+                        value={editStart}
+                        onChange={(e) => setEditStart(e.target.value)}
+                        className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                      />
+                      <input
+                        type="time"
+                        value={editEnd}
+                        onChange={(e) => setEditEnd(e.target.value)}
+                        className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                      />
                     </div>
                   </div>
-                ) : (
-                  /* Main interactive card block */
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="text-xs font-mono font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/15">
-                          {convertTo12Hour(item.start)} - {convertTo12Hour(item.end)}
-                        </span>
-                        {isActive && (
-                          <span className="animate-pulse bg-emerald-500 text-slate-950 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full shadow-md shadow-emerald-500/20">
-                            Active Now
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-200 mt-1">{item.title}</h4>
-                      <p className="text-xs text-slate-400">{item.desc}</p>
-                    </div>
+                  <div className="mt-4">
+                     <input
+                        type="text"
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      />
+                  </div>
+                  <div className="flex justify-end gap-3 mt-4">
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="px-4 py-2 rounded-xl font-bold text-xs bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => saveEdit(task.id)}
+                      className="px-4 py-2 bg-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              );
+            }
 
-                    <div className="flex items-center gap-2 border-t border-slate-900 sm:border-0 pt-2 sm:pt-0">
-                      <button
-                        onClick={() => startEdit(item)}
-                        className="p-1.5 text-slate-450 hover:text-sky-400 rounded-lg hover:bg-slate-900 border border-transparent hover:border-slate-800 cursor-pointer transition-all"
-                        title="Edit item"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="p-1.5 text-slate-450 hover:text-rose-400 rounded-lg hover:bg-slate-900 border border-transparent hover:border-slate-800 cursor-pointer transition-all"
-                        title="Delete item"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+            return (
+              <motion.div
+                key={task.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`relative flex items-center gap-6 group`}
+              >
+                {/* Timeline Dot & Time */}
+                <div className="flex flex-col items-center w-20 shrink-0 z-10">
+                  <span className="text-xs font-bold font-mono opacity-60 mb-2">{convertTo12Hour(task.start)}</span>
+                  <div className={`w-4 h-4 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${
+                    isActive 
+                      ? 'bg-indigo-500 border-indigo-500 ring-4 ring-indigo-500/20 scale-125' 
+                      : 'bg-[#18181b] border-white/20 dark:bg-white/10 group-hover:border-indigo-400'
+                  }`}>
+                    {isActive && <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />}
                   </div>
-                )}
+                  <span className="text-xs font-bold font-mono opacity-40 mt-2">{convertTo12Hour(task.end)}</span>
+                </div>
+
+                {/* Card */}
+                <div className={`flex-1 p-5 sm:p-6 rounded-[2rem] backdrop-blur-2xl border shadow-xl transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                  isActive 
+                    ? 'bg-indigo-500/10 border-indigo-500/30 ring-1 ring-indigo-500/20' 
+                    : 'bg-white/[0.03] border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20'
+                }`}>
+                  <div className="flex-1">
+                    <h3 className={`text-lg font-bold tracking-tight ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
+                      {task.title}
+                    </h3>
+                    <p className="text-sm opacity-60 mt-1 leading-relaxed">{task.desc}</p>
+                    
+                    {isActive && (
+                      <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 bg-indigo-500/10 text-indigo-500 rounded-full text-xs font-bold uppercase tracking-wider">
+                        <Play className="w-3 h-3" /> In Progress
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity self-end sm:self-auto">
+                    <button
+                      onClick={() => startEdit(task)}
+                      className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4 opacity-70" />
+                    </button>
+                    <button
+                      onClick={() => deleteItem(task.id)}
+                      className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 opacity-70" />
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             );
           })}
-        </AnimatePresence>
-      </motion.div>
+        </div>
+      </div>
     </motion.div>
   );
-}
+});
+
+export default Routine;
