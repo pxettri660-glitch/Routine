@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, Plus, Check, Square, Trash2, ShieldAlert, Award } from 'lucide-react';
+import { Target, Plus, Check, Square, Trash2, ShieldAlert, Award, Flame } from 'lucide-react';
 import { GoalItem } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -27,12 +27,34 @@ const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: Goa
   };
 
   const toggleGoal = (id: string) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
     const updated = goals.map((g) => {
       if (g.id === id) {
         const nextCompleted = !g.completed;
-        // Award +100 XP for check, -100 XP for uncheck:
         onAwardXP(nextCompleted ? 100 : -100);
-        return { ...g, completed: nextCompleted };
+
+        let newStreak = g.streak || 0;
+        let newLastCompletedDate = g.lastCompletedDate;
+
+        if (nextCompleted) {
+          if (g.lastCompletedDate === yesterdayStr) {
+            newStreak += 1;
+          } else if (g.lastCompletedDate !== todayStr) {
+             newStreak = 1;
+          }
+          newLastCompletedDate = todayStr;
+        } else {
+          if (g.lastCompletedDate === todayStr) {
+             newStreak = Math.max(0, newStreak - 1);
+             newLastCompletedDate = newStreak > 0 ? yesterdayStr : undefined;
+          }
+        }
+
+        return { ...g, completed: nextCompleted, streak: newStreak, lastCompletedDate: newLastCompletedDate };
       }
       return g;
     });
@@ -171,7 +193,7 @@ const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: Goa
                     <Check className="w-4 h-4" strokeWidth={3} />
                   </div>
 
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 flex items-center gap-3">
                     <p
                       className={`text-[15px] font-semibold truncate transition-all duration-300 ${
                         g.completed ? 'line-through opacity-70' : ''
@@ -179,6 +201,12 @@ const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: Goa
                     >
                       {g.title}
                     </p>
+                    {g.streak && g.streak > 0 ? (
+                      <div className="flex items-center gap-1 text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-md flex-shrink-0 text-xs font-bold" title={`${g.streak} Day Streak!`}>
+                        <Flame className="w-3 h-3" />
+                        <span>{g.streak}</span>
+                      </div>
+                    ) : null}
                   </div>
 
                   <span

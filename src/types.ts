@@ -13,6 +13,8 @@ export interface GoalItem {
   completed: boolean;
   category: 'academic' | 'coding' | 'fitness' | 'personal';
   deadline?: string;
+  streak?: number;
+  lastCompletedDate?: string;
 }
 
 export interface NoteItem {

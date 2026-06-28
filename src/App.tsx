@@ -17,7 +17,9 @@ import {
   Cpu,
   BrainCircuit,
   Sparkles,
-  Settings
+  Settings,
+  Timer,
+  Flame
 } from 'lucide-react';
 
 import { RoutineItem, GoalItem, NoteItem, AudioTrack } from './types';
@@ -550,6 +552,7 @@ export default function App() {
             {[
               { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
               { id: 'routine', icon: Sliders, label: 'Routine' },
+              { id: 'focus', icon: Timer, label: 'Focus' },
             ].map((item) => {
               const isSelected = currentView === item.id;
               const Icon = item.icon;
@@ -557,7 +560,7 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => setCurrentView(item.id)}
-                  className={`relative p-3.5 sm:px-5 sm:py-3.5 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
+                  className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
                     isSelected
                       ? isThemeLight ? 'text-black' : 'text-white'
                       : isThemeLight ? 'text-black/40 hover:text-black/70 hover:bg-black/5' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
@@ -590,7 +593,8 @@ export default function App() {
 
             {[
               { id: 'goals', icon: Target, label: 'Goals' },
-              { id: 'tools', icon: Settings, label: 'Settings' }, // mapped tools to settings icon visually
+              { id: 'music', icon: Music, label: 'Music' },
+              { id: 'tools', icon: Settings, label: 'Settings' }, 
             ].map((item) => {
               const isSelected = currentView === item.id;
               const Icon = item.icon;
@@ -598,7 +602,7 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => setCurrentView(item.id)}
-                  className={`relative p-3.5 sm:px-5 sm:py-3.5 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
+                  className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
                     isSelected
                       ? isThemeLight ? 'text-black' : 'text-white'
                       : isThemeLight ? 'text-black/40 hover:text-black/70 hover:bg-black/5' : 'text-white/40 hover:text-white/70 hover:bg-white/5'

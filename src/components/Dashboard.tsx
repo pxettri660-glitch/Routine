@@ -188,7 +188,7 @@ const Dashboard = React.memo(function Dashboard({
           </div>
           <div className="relative z-10">
             <h3 className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1 flex items-center gap-2">
-              <Flame className="w-4 h-4 text-orange-500" /> Focus Timer
+              <Flame className="w-4 h-4 text-orange-500" /> Focus & Stopwatch
             </h3>
             <div className="text-5xl font-mono font-bold tracking-tighter my-6 text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-red-500 drop-shadow-sm">
               {formatPomoTime(pomoTime)}
@@ -266,7 +266,7 @@ const Dashboard = React.memo(function Dashboard({
               <Volume2 className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-sm">Media & Synths</h4>
+              <h4 className="font-bold text-sm">Music & Audio</h4>
               <p className="text-xs opacity-60 mt-0.5">Focus frequencies</p>
             </div>
           </div>
