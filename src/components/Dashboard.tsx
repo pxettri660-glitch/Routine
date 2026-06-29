@@ -241,7 +241,7 @@ const Dashboard = React.memo(function Dashboard({
       </div>
 
       {/* Alarm & Quick Actions */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pb-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-6">
         <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex items-center justify-between group hover:border-black/10 dark:hover:border-white/20 transition-colors">
           <div className="flex items-center gap-4">
             <div className={`p-3 rounded-2xl ${isAlarmEnabled ? 'bg-sky-500/20 text-sky-500' : 'bg-black/5 dark:bg-white/10 opacity-50'}`}>
@@ -268,6 +268,19 @@ const Dashboard = React.memo(function Dashboard({
             <div>
               <h4 className="font-bold text-sm">Music & Audio</h4>
               <p className="text-xs opacity-60 mt-0.5">Focus frequencies</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-opacity" />
+        </div>
+
+        <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex items-center justify-between group hover:border-black/10 dark:hover:border-white/20 transition-colors cursor-pointer" onClick={() => onNavigate('tools')}>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-500 group-hover:scale-110 transition-transform">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm">Stopwatch</h4>
+              <p className="text-xs opacity-60 mt-0.5">Track time</p>
             </div>
           </div>
           <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-opacity" />

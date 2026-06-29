@@ -229,15 +229,51 @@ const Entertainment = React.memo(function Entertainment({
     setIsPlaying(true);
   };
 
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
   const toggleLocalPlay = () => {
     if (synthType) stopSynthAtmosphere();
+    
+    if (audioElementRef.current) {
+      if (isPlaying) {
+        audioElementRef.current.pause();
+      } else {
+        audioElementRef.current.play().catch(e => console.warn(e));
+      }
+    }
     setIsPlaying(!isPlaying);
   };
 
   const nextLocalTrack = () => {
     if (loadedTracks.length === 0) return;
     setCurrentTrackIndex((currentTrackIndex + 1) % loadedTracks.length);
+    setIsPlaying(true);
   };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = Number(e.target.value);
+    if (audioElementRef.current) {
+      audioElementRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
+
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  useEffect(() => {
+    if (audioElementRef.current && loadedTracks.length > 0) {
+      if (isPlaying && !synthType) {
+        audioElementRef.current.play().catch(e => console.warn(e));
+      } else {
+        audioElementRef.current.pause();
+      }
+    }
+  }, [currentTrackIndex, isPlaying, synthType, loadedTracks.length]);
 
   return (
     <motion.div 
@@ -259,6 +295,17 @@ const Entertainment = React.memo(function Entertainment({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
+        {/* Actual Audio Element */}
+        <audio 
+          ref={audioElementRef}
+          src={loadedTracks.length > 0 && currentTrackIndex >= 0 ? loadedTracks[currentTrackIndex].url : undefined}
+          onEnded={nextLocalTrack}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        />
+
         {/* Synth Control Panel */}
         <div className="p-6 sm:p-8 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -320,6 +367,23 @@ const Entertainment = React.memo(function Entertainment({
               <p className="text-sm opacity-50 mt-1">
                  {loadedTracks.length > 0 && currentTrackIndex >= 0 ? `Track ${currentTrackIndex + 1} of ${loadedTracks.length}` : 'System Output'}
               </p>
+              
+              {!synthType && loadedTracks.length > 0 && (
+                <div className="w-full mt-6">
+                  <input 
+                    type="range" 
+                    min={0} 
+                    max={duration || 100} 
+                    value={currentTime} 
+                    onChange={handleSeek}
+                    className="w-full h-2 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] sm:text-xs font-mono font-medium opacity-50 mt-2">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

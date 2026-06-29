@@ -6,11 +6,17 @@ import { motion, AnimatePresence } from 'motion/react';
 interface ToolsAndSettingsProps {
   notes: NoteItem[];
   onUpdateNotes: (newNotes: NoteItem[]) => void;
+  isThemeLight?: boolean;
+  onToggleTheme?: () => void;
 }
 
-const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateNotes }: ToolsAndSettingsProps) {
+const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateNotes, isThemeLight, onToggleTheme }: ToolsAndSettingsProps) {
   const [activeTab, setActiveTab] = useState<'tools' | 'settings'>('settings');
   const [activeTool, setActiveTool] = useState<'calculator' | 'stopwatch' | 'notes'>('notes');
+
+  const [isAnimationsEnabled, setIsAnimationsEnabled] = useState(true);
+  const [isLazyLoading, setIsLazyLoading] = useState(true);
+  const [isMemoryProtection, setIsMemoryProtection] = useState(true);
 
   // Notes State
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(notes.length > 0 ? notes[0].id : null);
@@ -140,18 +146,28 @@ const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateN
                 </h3>
                 
                 <div className="space-y-4 relative z-10">
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/10">
+                  <div 
+                    onClick={onToggleTheme}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/10"
+                  >
                     <div className="flex items-center gap-4">
-                      <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Moon className="w-5 h-5" /></div>
+                      <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl">
+                        {isThemeLight ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                      </div>
                       <div>
                         <h4 className="font-bold text-sm">Theme Mode</h4>
-                        <p className="text-xs opacity-60 mt-0.5">Toggle light & dark</p>
+                        <p className="text-xs opacity-60 mt-0.5">Toggle light & dark ({isThemeLight ? 'Light' : 'Dark'})</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 opacity-40" />
+                    <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${!isThemeLight ? 'bg-sky-500' : 'bg-black/20 dark:bg-white/20'}`}>
+                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform duration-300 ${!isThemeLight ? 'translate-x-7' : 'translate-x-1'}`} />
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/10">
+                  <div 
+                    onClick={() => setIsAnimationsEnabled(!isAnimationsEnabled)}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/10"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Sparkles className="w-5 h-5" /></div>
                       <div>
@@ -159,8 +175,8 @@ const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateN
                         <p className="text-xs opacity-60 mt-0.5">Motion & Blur effects</p>
                       </div>
                     </div>
-                    <div className="w-12 h-6 rounded-full bg-pink-500 relative transition-colors duration-300">
-                      <div className="w-4 h-4 rounded-full bg-white absolute top-1 left-7" />
+                    <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${isAnimationsEnabled ? 'bg-pink-500' : 'bg-black/20 dark:bg-white/20'}`}>
+                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all duration-300 ${isAnimationsEnabled ? 'left-7' : 'left-1'}`} />
                     </div>
                   </div>
                 </div>
@@ -172,7 +188,10 @@ const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateN
                 </h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5">
+                  <div 
+                    onClick={() => setIsLazyLoading(!isLazyLoading)}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Monitor className="w-5 h-5" /></div>
                       <div>
@@ -180,11 +199,14 @@ const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateN
                         <p className="text-xs opacity-60 mt-0.5">Optimized rendering</p>
                       </div>
                     </div>
-                    <div className="w-12 h-6 rounded-full bg-emerald-500 relative transition-colors duration-300">
-                      <div className="w-4 h-4 rounded-full bg-white absolute top-1 left-7" />
+                    <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${isLazyLoading ? 'bg-emerald-500' : 'bg-black/20 dark:bg-white/20'}`}>
+                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all duration-300 ${isLazyLoading ? 'left-7' : 'left-1'}`} />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5">
+                  <div 
+                    onClick={() => setIsMemoryProtection(!isMemoryProtection)}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="p-2.5 bg-black/5 dark:bg-white/10 rounded-xl"><Activity className="w-5 h-5" /></div>
                       <div>
@@ -192,8 +214,8 @@ const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateN
                         <p className="text-xs opacity-60 mt-0.5">Auto-garbage collection</p>
                       </div>
                     </div>
-                    <div className="w-12 h-6 rounded-full bg-emerald-500 relative transition-colors duration-300">
-                      <div className="w-4 h-4 rounded-full bg-white absolute top-1 left-7" />
+                    <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${isMemoryProtection ? 'bg-emerald-500' : 'bg-black/20 dark:bg-white/20'}`}>
+                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all duration-300 ${isMemoryProtection ? 'left-7' : 'left-1'}`} />
                     </div>
                   </div>
                 </div>

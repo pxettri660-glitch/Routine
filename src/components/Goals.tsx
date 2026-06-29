@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, Plus, Check, Square, Trash2, ShieldAlert, Award, Flame } from 'lucide-react';
+import { Target, Plus, Check, Square, Trash2, ShieldAlert, Award, Flame, X } from 'lucide-react';
 import { GoalItem } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,6 +13,7 @@ const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: Goa
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<'academic' | 'coding' | 'fitness' | 'personal'>('academic');
   const [filter, setFilter] = useState<string>('all');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const addGoal = () => {
     if (!newTitle.trim()) return;
@@ -21,9 +22,12 @@ const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: Goa
       title: newTitle.trim(),
       completed: false,
       category: newCategory,
+      streak: 0,
+      lastCompletedDate: undefined
     };
     onUpdateGoals([...goals, newGoal]);
     setNewTitle('');
+    setIsAddModalOpen(false);
   };
 
   const toggleGoal = (id: string) => {
@@ -120,39 +124,15 @@ const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: Goa
         </div>
       </div>
 
-      <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl overflow-hidden relative">
-        <h3 className="text-sm font-bold uppercase tracking-widest opacity-60 mb-4 flex items-center gap-2">
-          <Award className="w-4 h-4 text-emerald-500" /> Create Objective
-        </h3>
-        <div className="flex flex-col md:flex-row gap-3">
-          <input
-            type="text"
-            placeholder="e.g. Complete React tutorial..."
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addGoal()}
-            className="flex-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-          />
-          <div className="flex gap-3">
-            <select
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value as any)}
-              className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all cursor-pointer outline-none"
-            >
-              <option value="academic">Academic</option>
-              <option value="coding">Coding</option>
-              <option value="fitness">Fitness</option>
-              <option value="personal">Personal</option>
-            </select>
-            <button
-              onClick={addGoal}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
+      <button
+        onClick={() => setIsAddModalOpen(true)}
+        className="w-full p-4 rounded-[2rem] backdrop-blur-2xl border border-dashed bg-white/[0.03] border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 hover:bg-black/5 dark:hover:bg-white/10 transition-all text-center flex items-center justify-center gap-2 group cursor-pointer shadow-sm"
+      >
+        <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all">
+          <Plus className="w-5 h-5" />
         </div>
-      </div>
+        <span className="font-bold opacity-70 group-hover:opacity-100">Add New Goal</span>
+      </button>
 
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
@@ -230,6 +210,73 @@ const Goals = React.memo(function Goals({ goals, onUpdateGoals, onAwardXP }: Goa
           )}
         </AnimatePresence>
       </div>
+
+      {/* Add Goal Modal */}
+      <AnimatePresence>
+        {isAddModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-white dark:bg-[#18181b] rounded-[2rem] p-6 shadow-2xl border border-black/10 dark:border-white/10"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Award className="w-5 h-5 text-emerald-500" />
+                  New Objective
+                </h3>
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold opacity-70 mb-2">Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Complete React tutorial..."
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addGoal()}
+                    autoFocus
+                    className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold opacity-70 mb-2">Category</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as any)}
+                    className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all cursor-pointer outline-none"
+                  >
+                    <option value="academic">Academic</option>
+                    <option value="coding">Coding</option>
+                    <option value="fitness">Fitness</option>
+                    <option value="personal">Personal</option>
+                  </select>
+                </div>
+                
+                <button
+                  onClick={addGoal}
+                  className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Check className="w-5 h-5" /> Save Goal
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 });

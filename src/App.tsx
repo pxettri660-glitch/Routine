@@ -64,7 +64,11 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
-  const [isThemeLight, setIsThemeLight] = useState<boolean>(false);
+  const [isThemeLight, setIsThemeLight] = useState<boolean>(() => {
+    const local = localStorage.getItem('prince_theme_light');
+    if (local !== null) return local === 'true';
+    return false; // Default to dark mode
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Gamification Engine State
@@ -146,6 +150,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('prince_level', currentLevel.toString());
   }, [currentLevel]);
+
+  useEffect(() => {
+    localStorage.setItem('prince_theme_light', isThemeLight.toString());
+    if (isThemeLight) {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  }, [isThemeLight]);
 
   // Clock runner ticker thread
   useEffect(() => {
@@ -402,11 +415,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className={`min-h-[100dvh] flex flex-col transition-all duration-300 ${getJarvisThemeClass()} ${
-        isThemeLight 
-          ? 'bg-[#f5f5f7] text-[#1d1d1f]' 
-          : 'bg-[#000000] text-slate-100'
-      }`}>
+      <div className={`min-h-[100dvh] flex flex-col transition-all duration-300 ${getJarvisThemeClass()} bg-transparent`}>
       
       {/* Background Ambient Layers */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -509,6 +518,8 @@ export default function App() {
                     <Notes
                       notes={notes}
                       onUpdateNotes={setNotes}
+                      isThemeLight={isThemeLight}
+                      onToggleTheme={() => setIsThemeLight(!isThemeLight)}
                     />
                   )}
 
@@ -546,9 +557,7 @@ export default function App() {
       {/* Floating Premium Bottom Navigation */}
       {currentView !== 'jarvis' && (
         <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-          <div className={`pointer-events-auto flex items-center justify-between gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border
-            ${isThemeLight ? 'bg-white/70 border-black/5 shadow-black/5' : 'bg-[#18181b]/80 border-white/10 shadow-black/50'}
-          `}>
+          <div className="pointer-events-auto flex items-center justify-between gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border bg-white/70 dark:bg-[#18181b]/80 border-black/5 dark:border-white/10 shadow-black/5 dark:shadow-black/50 transition-colors duration-300">
             {[
               { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
               { id: 'routine', icon: Sliders, label: 'Routine' },
@@ -562,14 +571,14 @@ export default function App() {
                   onClick={() => setCurrentView(item.id)}
                   className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
                     isSelected
-                      ? isThemeLight ? 'text-black' : 'text-white'
-                      : isThemeLight ? 'text-black/40 hover:text-black/70 hover:bg-black/5' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                      ? 'text-black dark:text-white'
+                      : 'text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   {isSelected && (
                     <motion.div 
                       layoutId="bottom-nav-indicator"
-                      className={`absolute inset-0 rounded-full z-0 ${isThemeLight ? 'bg-black/5' : 'bg-white/10'}`}
+                      className="absolute inset-0 rounded-full z-0 bg-black/5 dark:bg-white/10 transition-colors duration-300"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
@@ -581,12 +590,7 @@ export default function App() {
             {/* FAB Middle Button */}
             <button
               onClick={() => setCurrentView('jarvis')}
-              className={`relative mx-1 sm:mx-2 p-4 sm:p-5 rounded-full flex items-center justify-center transition-all duration-500 group shadow-lg
-                ${isThemeLight 
-                  ? 'bg-black text-white hover:bg-gray-800 hover:shadow-xl hover:-translate-y-1' 
-                  : 'bg-white text-black hover:bg-gray-200 hover:shadow-white/20 hover:-translate-y-1'
-                }
-              `}
+              className="relative mx-1 sm:mx-2 p-4 sm:p-5 rounded-full flex items-center justify-center transition-all duration-500 group shadow-lg bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 hover:-translate-y-1"
             >
               <Bot className="w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-300 group-hover:scale-110" strokeWidth={2.5} />
             </button>
@@ -604,14 +608,14 @@ export default function App() {
                   onClick={() => setCurrentView(item.id)}
                   className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
                     isSelected
-                      ? isThemeLight ? 'text-black' : 'text-white'
-                      : isThemeLight ? 'text-black/40 hover:text-black/70 hover:bg-black/5' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                      ? 'text-black dark:text-white'
+                      : 'text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   {isSelected && (
                     <motion.div 
                       layoutId="bottom-nav-indicator"
-                      className={`absolute inset-0 rounded-full z-0 ${isThemeLight ? 'bg-black/5' : 'bg-white/10'}`}
+                      className="absolute inset-0 rounded-full z-0 bg-black/5 dark:bg-white/10 transition-colors duration-300"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
