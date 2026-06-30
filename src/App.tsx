@@ -53,8 +53,8 @@ const DEFAULT_GOALS: GoalItem[] = [
 const DEFAULT_NOTES: NoteItem[] = [
   {
     id: 'n1',
-    title: "Prince Engine Manual",
-    content: "👑 WELCOME TO PRINCE ENGINE v5 — ULTIMATE PRODUCTION COCKPIT\n=======================================================\n\nThis system is fully automated. \nIt runs a dedicated local scheduler to track sequence directives seamlessly.\n\n⚡ SPECIAL CONTROLS:\n• Synthesizer Alarms: Tested and triggered at scheduled intervals.\n• Multi-Page Notebook: Formatted specifically for syllabus concepts and homework proofs.\n• Browser Focus Synthesizers: Built-in binaural study beats located in the Audio Beats tab.\n• Jarvis Ultra X Assistant: Fully voice-integrated companion utilizing Google Gemini models on the server.\n\nStay consistent!",
+    title: "Study Engine Manual",
+    content: "🎓 WELCOME TO STUDY ENGINE v5 — ULTIMATE PRODUCTION COCKPIT\n=======================================================\n\nThis system is fully automated. \nIt runs a dedicated local scheduler to track sequence directives seamlessly.\n\n⚡ SPECIAL CONTROLS:\n• Synthesizer Alarms: Tested and triggered at scheduled intervals.\n• Multi-Page Notebook: Formatted specifically for syllabus concepts and homework proofs.\n• Browser Focus Synthesizers: Built-in binaural study beats located in the Audio Beats tab.\n• Study Assistant AI: Fully voice-integrated companion utilizing Google Gemini models on the server.\n\nStay consistent!",
     category: "Scratchpad",
     updatedAt: new Date().toLocaleString()
   }
@@ -65,7 +65,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [isThemeLight, setIsThemeLight] = useState<boolean>(() => {
-    const local = localStorage.getItem('prince_theme_light');
+    const local = localStorage.getItem('study_theme_light');
     if (local !== null) return local === 'true';
     return false; // Default to dark mode
   });
@@ -73,13 +73,25 @@ export default function App() {
 
   // Gamification Engine State
   const [currentXP, setCurrentXP] = useState<number>(() => {
-    const local = localStorage.getItem('prince_xp');
+    const local = localStorage.getItem('study_xp');
     return local ? parseInt(local) : 0;
   });
 
   const [currentLevel, setCurrentLevel] = useState<number>(() => {
-    const local = localStorage.getItem('prince_level');
+    const local = localStorage.getItem('study_level');
     return local ? parseInt(local) : 1;
+  });
+
+  const [xpHistory, setXpHistory] = useState<XPHistory[]>(() => {
+    const local = localStorage.getItem('study_xp_history');
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
   });
 
   // Controls for active Jarvis cockpit style ("cyan", "red", "purple", "gold")
@@ -87,23 +99,23 @@ export default function App() {
 
   // Core schedules and local-database states with client-side persistence
   const [routines, setRoutines] = useState<RoutineItem[]>(() => {
-    const local = localStorage.getItem('prince_routines');
+    const local = localStorage.getItem('study_routines');
     return local ? JSON.parse(local) : DEFAULT_ROUTINES;
   });
 
   const [goals, setGoals] = useState<GoalItem[]>(() => {
-    const local = localStorage.getItem('prince_goals');
+    const local = localStorage.getItem('study_goals');
     return local ? JSON.parse(local) : DEFAULT_GOALS;
   });
 
   const [notes, setNotes] = useState<NoteItem[]>(() => {
-    const local = localStorage.getItem('prince_notes');
+    const local = localStorage.getItem('study_notes');
     return local ? JSON.parse(local) : DEFAULT_NOTES;
   });
 
   // Music state synchronization
   const [loadedTracks, setLoadedTracks] = useState<AudioTrack[]>(() => {
-    const local = localStorage.getItem('prince_tracks');
+    const local = localStorage.getItem('study_tracks');
     return local ? JSON.parse(local) : [];
   });
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
@@ -128,31 +140,35 @@ export default function App() {
 
   // Sync state data to storage
   useEffect(() => {
-    localStorage.setItem('prince_routines', JSON.stringify(routines));
+    localStorage.setItem('study_routines', JSON.stringify(routines));
   }, [routines]);
 
   useEffect(() => {
-    localStorage.setItem('prince_goals', JSON.stringify(goals));
+    localStorage.setItem('study_goals', JSON.stringify(goals));
   }, [goals]);
 
   useEffect(() => {
-    localStorage.setItem('prince_notes', JSON.stringify(notes));
+    localStorage.setItem('study_notes', JSON.stringify(notes));
   }, [notes]);
 
   useEffect(() => {
-    localStorage.setItem('prince_tracks', JSON.stringify(loadedTracks));
+    localStorage.setItem('study_tracks', JSON.stringify(loadedTracks));
   }, [loadedTracks]);
 
   useEffect(() => {
-    localStorage.setItem('prince_xp', currentXP.toString());
+    localStorage.setItem('study_xp', currentXP.toString());
   }, [currentXP]);
 
   useEffect(() => {
-    localStorage.setItem('prince_level', currentLevel.toString());
+    localStorage.setItem('study_level', currentLevel.toString());
   }, [currentLevel]);
 
   useEffect(() => {
-    localStorage.setItem('prince_theme_light', isThemeLight.toString());
+    localStorage.setItem('study_xp_history', JSON.stringify(xpHistory));
+  }, [xpHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('study_theme_light', isThemeLight.toString());
     if (isThemeLight) {
       document.documentElement.classList.remove('dark');
     } else {
@@ -170,6 +186,17 @@ export default function App() {
 
   // XP addition and Level coordination
   const handleAwardXP = React.useCallback((amount: number) => {
+    // Record history
+    setXpHistory(prev => {
+      const today = new Date().toISOString().slice(0, 10);
+      const existing = prev.find(p => p.date === today);
+      if (existing) {
+        return prev.map(p => p.date === today ? { ...p, xp: p.xp + amount } : p);
+      } else {
+        return [...prev, { date: today, xp: amount }];
+      }
+    });
+
     setCurrentXP((prevXP) => {
       let nextXP = prevXP + amount;
       let nextLevel = currentLevel;
@@ -180,8 +207,8 @@ export default function App() {
         nextLevel += 1;
         setCurrentLevel(nextLevel);
         setTimeout(() => {
-          speakVoiceAnnouncement(`Congratulations Prince. Performance milestone crossed. You have leveled up to Level ${nextLevel}!`);
-          alert(`👑 LEVEL UP! Prince is now Level ${nextLevel}!`);
+          speakVoiceAnnouncement(`Congratulations. Performance milestone crossed. You have leveled up to Level ${nextLevel}!`);
+          alert(`👑 LEVEL UP! You are now Level ${nextLevel}!`);
         }, 100);
       } else if (nextXP < 0) {
         nextXP = 0;
@@ -325,7 +352,7 @@ export default function App() {
 
       // Read announcement text every 20 seconds
       if (ss === 0 || ss === 20 || ss === 40) {
-        speakVoiceAnnouncement("Wake up Prince! It is time to wake up and start your ultimate morning routing.");
+        speakVoiceAnnouncement("Wake up! It is time to wake up and start your ultimate morning routing.");
       }
     } else {
       // Auto-deactivate alarm visual widget once past the active minute
@@ -341,11 +368,11 @@ export default function App() {
       // Delay milestone warning slightly if alarm is not actively sounding
       if (!matchesAlarmTime) {
         playMilestonePing();
-        speakVoiceAnnouncement(`Attention Prince, scheduling change detected. It is time for ${activeTask.title}`);
+        speakVoiceAnnouncement(`Attention, scheduling change detected. It is time for ${activeTask.title}`);
       }
     } else if (!activeTask && lastAnnouncedTaskIdRef.current !== 'idle') {
       lastAnnouncedTaskIdRef.current = 'idle';
-      speakVoiceAnnouncement("Take a quick break Prince. You are currently in a personal transition slot.");
+      speakVoiceAnnouncement("Take a quick break. You are currently in a personal transition slot.");
     }
   }, [currentTime, routines, alarmTime, isAlarmEnabled, activeTask]);
 
@@ -360,7 +387,7 @@ export default function App() {
   }, []);
 
   const runSpeechDemoTester = React.useCallback(() => {
-    speakVoiceAnnouncement("Acoustic synthesis complete. Prince Engine operations are fully active and calibrated!");
+    speakVoiceAnnouncement("Acoustic synthesis complete. Study Engine operations are fully active and calibrated!");
   }, []);
 
   const dismissAlarmTrigger = () => {
@@ -402,7 +429,7 @@ export default function App() {
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/[0.05] border border-white/[0.08] backdrop-blur-2xl flex items-center justify-center shadow-2xl mb-8">
                 <Sparkles className="w-12 h-12 text-white" />
               </div>
-              <h1 className="text-4xl sm:text-5xl font-bold tracking-tighter text-white mb-3">JARVIS</h1>
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tighter text-white mb-3">STUDY ENGINE</h1>
               <p className="text-white/50 tracking-widest uppercase text-sm font-semibold">Premium Intelligence</p>
               
               <div className="mt-12 flex gap-2">
@@ -486,6 +513,7 @@ export default function App() {
                       triggerVoiceDemo={runSpeechDemoTester}
                       onNavigate={(view) => setCurrentView(view)}
                       onAwardXP={handleAwardXP}
+                      xpHistory={xpHistory}
                     />
                   )}
 

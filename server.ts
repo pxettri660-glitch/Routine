@@ -117,7 +117,7 @@ async function startServer() {
         { role: 'user', parts: userParts }
       ];
 
-      let systemInstruction = `You are Jarvis, Prince's personal assistant.
+      let systemInstruction = `You are the Study Assistant AI, a personal assistant for a student.
 
 Rules:
 - Human-like, friendly, and professional.
@@ -328,10 +328,10 @@ You can communicate seamlessly in English and Nepali.`;
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[JARVIS ULTRA X OS] Multi-Agent server ignited successfully on http://0.0.0.0:${PORT}`);
+    console.log(`[STUDY ENGINE] Multi-Agent server ignited successfully on http://0.0.0.0:${PORT}`);
   });
 }
 
 startServer().catch((err) => {
-  console.error('[JARVIS ULTRA X OS] Igniter core failed:', err);
+  console.error('[STUDY ENGINE] Igniter core failed:', err);
 });

@@ -231,13 +231,14 @@ const ToolsAndSettings = React.memo(function ToolsAndSettings({ notes, onUpdateN
                         <span className="text-4xl">👑</span>
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold tracking-tight mb-2">Jarvis OS</h3>
+                    <h3 className="text-2xl font-bold tracking-tight mb-2">Study Engine</h3>
                     <p className="text-sm opacity-60 mb-6">Version 5.0.0 (Ultimate Build)</p>
-                    <div className="flex flex-wrap gap-2 justify-center">
+                    <div className="flex flex-wrap gap-2 justify-center mb-6">
                       <span className="px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest opacity-80 border border-black/5 dark:border-white/10">iOS Architecture</span>
                       <span className="px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest opacity-80 border border-black/5 dark:border-white/10">120 FPS target</span>
                       <span className="px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest opacity-80 border border-black/5 dark:border-white/10">Edge-to-Edge</span>
                     </div>
+                    <p className="text-xs font-medium opacity-40 uppercase tracking-widest mt-auto pt-4">Made with passion by Prince</p>
                  </div>
               </div>
             </div>

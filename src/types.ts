@@ -31,3 +31,8 @@ export interface AudioTrack {
   url: string;
   duration?: string;
 }
+
+export interface XPHistory {
+  date: string; // YYYY-MM-DD
+  xp: number;
+}

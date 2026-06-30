@@ -32,7 +32,7 @@ export default function Jarvis({
   onToggleLightDarkTheme
 }: JarvisProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = localStorage.getItem('jarvis_chat_messages');
+    const saved = localStorage.getItem('study_chat_messages');
     return saved ? JSON.parse(saved) : [];
   });
   
@@ -47,7 +47,7 @@ export default function Jarvis({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('jarvis_chat_messages', JSON.stringify(messages));
+    localStorage.setItem('study_chat_messages', JSON.stringify(messages));
   }, [messages]);
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export default function Jarvis({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `jarvis_export_${new Date().toISOString().slice(0, 10)}.txt`;
+      link.download = `study_assistant_export_${new Date().toISOString().slice(0, 10)}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -204,7 +204,7 @@ export default function Jarvis({
             <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${activeGradient} flex items-center justify-center text-white shadow-lg`}>
               <Sparkles className="w-4 h-4" />
             </div>
-            <h1 className="font-semibold tracking-wide text-sm">JARVIS UI</h1>
+            <h1 className="font-semibold tracking-wide text-sm">STUDY ASSISTANT</h1>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(false)}
@@ -429,7 +429,7 @@ export default function Jarvis({
                       <div className={`flex flex-col min-w-0 ${isAssistant ? 'items-start' : 'items-end'}`}>
                         {isAssistant && (
                           <div className="flex items-center gap-2 mb-1.5 px-1">
-                            <span className="text-sm font-semibold tracking-wide">Jarvis</span>
+                            <span className="text-sm font-semibold tracking-wide">Assistant</span>
                             {m.modelUsed && (
                               <span className={`text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-md border
                                 ${isDark ? 'bg-white/10 border-white/10 text-white/70' : 'bg-black/5 border-black/10 text-black/70'}
@@ -602,7 +602,7 @@ export default function Jarvis({
               </form>
               
               <div className="text-center mt-3 text-xs font-medium opacity-50">
-                Jarvis may display inaccurate info, so double-check its responses.
+                Study Assistant may display inaccurate info, so double-check its responses.
               </div>
             
             </div>

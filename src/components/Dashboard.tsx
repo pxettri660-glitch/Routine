@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Bell, CheckSquare, Award, Play, Pause, RotateCcw, Volume2, Sparkles, Flame, ChevronRight, Activity, CalendarDays, Zap, Coffee, Target } from 'lucide-react';
-import { RoutineItem, GoalItem } from '../types';
+import { RoutineItem, GoalItem, XPHistory } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DashboardProps {
   currentTime: Date;
@@ -16,6 +17,7 @@ interface DashboardProps {
   triggerVoiceDemo: () => void;
   onNavigate: (view: string) => void;
   onAwardXP: (amount: number) => void;
+  xpHistory?: XPHistory[];
 }
 
 const Dashboard = React.memo(function Dashboard({
@@ -31,6 +33,7 @@ const Dashboard = React.memo(function Dashboard({
   triggerVoiceDemo,
   onNavigate,
   onAwardXP,
+  xpHistory = [],
 }: DashboardProps) {
   const completedGoals = goals.filter((g) => g.completed).length;
   const totalGoals = goals.length;
@@ -124,7 +127,7 @@ const Dashboard = React.memo(function Dashboard({
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <h3 className="text-sm font-bold">{greeting}, Prince</h3>
+            <h3 className="text-sm font-bold">{greeting}, Student</h3>
             <p className="text-xs opacity-50">Ready to conquer today?</p>
           </div>
           <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 shadow-lg cursor-pointer hover:scale-105 transition-transform">
@@ -239,6 +242,44 @@ const Dashboard = React.memo(function Dashboard({
           </div>
         </motion.div>
       </div>
+
+      {/* Weekly Productivity Trend */}
+      <motion.div variants={itemVariants} className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-6 opacity-10 dark:opacity-20 transition-opacity duration-500">
+           <Zap className="w-24 h-24" strokeWidth={1} />
+        </div>
+        <div className="relative z-10">
+          <h3 className="text-xs font-bold uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-500" /> Weekly Productivity Trend
+          </h3>
+          <div className="h-48 w-full mt-4">
+            {xpHistory.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={xpHistory.slice(-7)}>
+                  <defs>
+                    <linearGradient id="colorXp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" hide />
+                  <YAxis hide />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', borderRadius: '12px', border: 'none', color: '#fff' }}
+                    itemStyle={{ color: '#f59e0b' }}
+                    labelStyle={{ color: '#aaa' }}
+                  />
+                  <Area type="monotone" dataKey="xp" stroke="#f59e0b" fillOpacity={1} fill="url(#colorXp)" strokeWidth={3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full opacity-50 text-sm font-medium">
+                No activity recorded yet
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
 
       {/* Alarm & Quick Actions */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-6">
