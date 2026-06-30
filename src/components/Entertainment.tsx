@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, SkipForward, Music, Upload, VolumeX, Volume2, ListMusic, Sparkles, AudioWaveform, Waves, CloudRain, Disc } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Music, Upload, VolumeX, Volume2, ListMusic, Sparkles, AudioWaveform, Waves, CloudRain, Disc } from 'lucide-react';
 import { AudioTrack } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -231,6 +231,9 @@ const Entertainment = React.memo(function Entertainment({
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
 
   const toggleLocalPlay = () => {
     if (synthType) stopSynthAtmosphere();
@@ -247,7 +250,25 @@ const Entertainment = React.memo(function Entertainment({
 
   const nextLocalTrack = () => {
     if (loadedTracks.length === 0) return;
-    setCurrentTrackIndex((currentTrackIndex + 1) % loadedTracks.length);
+    if (isRepeat) {
+      if (audioElementRef.current) {
+        audioElementRef.current.currentTime = 0;
+        audioElementRef.current.play().catch(e => console.warn(e));
+      }
+      return;
+    }
+    if (isShuffle) {
+      const nextIdx = Math.floor(Math.random() * loadedTracks.length);
+      setCurrentTrackIndex(nextIdx);
+    } else {
+      setCurrentTrackIndex((currentTrackIndex + 1) % loadedTracks.length);
+    }
+    setIsPlaying(true);
+  };
+
+  const prevLocalTrack = () => {
+    if (loadedTracks.length === 0) return;
+    setCurrentTrackIndex((currentTrackIndex - 1 + loadedTracks.length) % loadedTracks.length);
     setIsPlaying(true);
   };
 
@@ -259,11 +280,26 @@ const Entertainment = React.memo(function Entertainment({
     }
   };
 
+  const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const vol = Number(e.target.value);
+    setVolume(vol);
+    if (audioElementRef.current) {
+      audioElementRef.current.volume = vol;
+    }
+  };
+
   const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return '0:00';
     const mins = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
+
+  useEffect(() => {
+    if (audioElementRef.current) {
+      audioElementRef.current.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     if (audioElementRef.current && loadedTracks.length > 0) {
@@ -387,21 +423,23 @@ const Entertainment = React.memo(function Entertainment({
             </div>
           </div>
 
-          <div className="mt-8 flex items-center justify-center gap-6">
-             <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          <div className="mt-8 flex flex-col items-center gap-6">
+            <div className="flex items-center justify-center gap-4 sm:gap-6">
+              <button
+                onClick={() => setIsShuffle(!isShuffle)}
+                disabled={!!synthType}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-30 ${isShuffle ? 'text-rose-500 bg-rose-500/10' : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'}`}
               >
-                <Upload className="w-5 h-5 opacity-70" />
+                <Shuffle className="w-4 h-4" />
               </button>
-              <input 
-                type="file" 
-                ref={fileInputRef}
-                accept="audio/*" 
-                multiple
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+
+              <button
+                onClick={prevLocalTrack}
+                disabled={loadedTracks.length === 0 || !!synthType}
+                className="w-12 h-12 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30"
+              >
+                <SkipBack className="w-5 h-5 opacity-70" />
+              </button>
 
               <button
                 onClick={toggleLocalPlay}
@@ -422,6 +460,45 @@ const Entertainment = React.memo(function Entertainment({
               >
                 <SkipForward className="w-5 h-5 opacity-70" />
               </button>
+
+              <button
+                onClick={() => setIsRepeat(!isRepeat)}
+                disabled={!!synthType}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-30 ${isRepeat ? 'text-rose-500 bg-rose-500/10' : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'}`}
+              >
+                <Repeat className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4 w-full px-4 mt-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-10 h-10 flex shrink-0 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                title="Upload Tracks"
+              >
+                <Upload className="w-4 h-4 opacity-70" />
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                accept="audio/*" 
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <div className="flex-1 flex items-center gap-2 max-w-[200px] mx-auto opacity-70 hover:opacity-100 transition-opacity">
+                {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                <input 
+                  type="range" 
+                  min={0} 
+                  max={1} 
+                  step={0.01}
+                  value={volume} 
+                  onChange={handleVolume}
+                  className="w-full h-1 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+            </div>
           </div>
         </div>
 

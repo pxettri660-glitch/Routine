@@ -130,8 +130,8 @@ const Dashboard = React.memo(function Dashboard({
             <h3 className="text-sm font-bold">{greeting}, Student</h3>
             <p className="text-xs opacity-50">Ready to conquer today?</p>
           </div>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 shadow-lg cursor-pointer hover:scale-105 transition-transform">
-            <div className="w-full h-full rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center border border-white/20">
+          <div onClick={() => onNavigate('profile')} className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 shadow-lg cursor-pointer hover:scale-105 transition-transform">
+            <div className="w-full h-full rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center border border-white/20 overflow-hidden">
               <span className="text-xl">👑</span>
             </div>
           </div>
@@ -255,7 +255,7 @@ const Dashboard = React.memo(function Dashboard({
           <div className="h-48 w-full mt-4">
             {xpHistory.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={xpHistory.slice(-7)}>
+                <AreaChart data={React.useMemo(() => xpHistory.slice(-7), [xpHistory])}>
                   <defs>
                     <linearGradient id="colorXp" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
@@ -285,12 +285,15 @@ const Dashboard = React.memo(function Dashboard({
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-6">
         <div className="p-6 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex items-center justify-between group hover:border-black/10 dark:hover:border-white/20 transition-colors">
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-2xl ${isAlarmEnabled ? 'bg-sky-500/20 text-sky-500' : 'bg-black/5 dark:bg-white/10 opacity-50'}`}>
+            <button onClick={triggerBuzzerDemo} className={`p-3 rounded-2xl transition-transform active:scale-95 ${isAlarmEnabled ? 'bg-sky-500/20 text-sky-500 hover:bg-sky-500 hover:text-white' : 'bg-black/5 dark:bg-white/10 opacity-50'}`}>
               <Bell className="w-6 h-6" />
-            </div>
+            </button>
             <div>
               <h4 className="font-bold text-sm">Morning Alarm</h4>
-              <p className="text-xs opacity-60 font-mono mt-0.5">{alarmTime}</p>
+              <p className="text-xs opacity-60 font-mono mt-0.5 cursor-pointer hover:opacity-100" onClick={() => {
+                const nt = prompt("Enter alarm time (HH:MM):", alarmTime);
+                if (nt && /^\d{2}:\d{2}$/.test(nt)) onSetAlarmTime(nt);
+              }}>{alarmTime}</p>
             </div>
           </div>
           <button 

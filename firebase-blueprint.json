@@ -1,0 +1,81 @@
+{
+  "$schema": "https://raw.githubusercontent.com/google/genai-os-firebase-cli/main/schema.json",
+  "collections": {
+    "users": {
+      "type": "document",
+      "fields": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "joinDate": { "type": "string" },
+        "currentLevel": { "type": "number" },
+        "currentXP": { "type": "number" },
+        "xpHistory": {
+           "type": "array",
+           "items": { "type": "map" }
+        },
+        "isThemeLight": { "type": "boolean" }
+      },
+      "rules": {
+        "read": "auth != null && request.auth.uid == id",
+        "write": "auth != null && request.auth.uid == id"
+      },
+      "subcollections": {
+        "routines": {
+          "type": "collection",
+          "fields": {
+            "title": { "type": "string" },
+            "duration": { "type": "number" },
+            "type": { "type": "string" },
+            "color": { "type": "string" },
+            "completed": { "type": "boolean" },
+            "order": { "type": "number" },
+            "timeString": { "type": "string" }
+          },
+          "rules": {
+            "read": "auth != null && request.auth.uid == parentId",
+            "write": "auth != null && request.auth.uid == parentId"
+          }
+        },
+        "goals": {
+          "type": "collection",
+          "fields": {
+            "title": { "type": "string" },
+            "completed": { "type": "boolean" },
+            "order": { "type": "number" }
+          },
+          "rules": {
+            "read": "auth != null && request.auth.uid == parentId",
+            "write": "auth != null && request.auth.uid == parentId"
+          }
+        },
+        "notes": {
+          "type": "collection",
+          "fields": {
+            "title": { "type": "string" },
+            "content": { "type": "string" },
+            "category": { "type": "string" },
+            "updatedAt": { "type": "string" }
+          },
+          "rules": {
+            "read": "auth != null && request.auth.uid == parentId",
+            "write": "auth != null && request.auth.uid == parentId"
+          }
+        },
+        "tracks": {
+          "type": "collection",
+          "fields": {
+            "title": { "type": "string" },
+            "artist": { "type": "string" },
+            "url": { "type": "string" },
+            "duration": { "type": "string" }
+          },
+          "rules": {
+            "read": "auth != null && request.auth.uid == parentId",
+            "write": "auth != null && request.auth.uid == parentId"
+          }
+        }
+      }
+    }
+  }
+}

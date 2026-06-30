@@ -19,18 +19,26 @@ import {
   Sparkles,
   Settings,
   Timer,
-  Flame
+  Flame,
+  User,
+  Mail
 } from 'lucide-react';
 
-import { RoutineItem, GoalItem, NoteItem, AudioTrack } from './types';
+import { RoutineItem, GoalItem, NoteItem, AudioTrack, XPHistory, TaskItem, UserStats, Achievement } from './types';
 import Dashboard from './components/Dashboard';
 import Routine from './components/Routine';
 import Goals from './components/Goals';
+import Tasks from './components/Tasks';
 import Notes from './components/Notes';
 import CalendarBS from './components/CalendarBS';
 import Jarvis from './components/Jarvis';
 import Entertainment from './components/Entertainment';
 import Focus from './components/Focus';
+import WelcomeScreen from './components/WelcomeScreen';
+import UserProfile from './components/UserProfile';
+import { useAuth } from './contexts/AuthContext';
+import { db } from './lib/firebase';
+import { doc, getDoc, setDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 
 // Standard Initial Seeds
 const DEFAULT_ROUTINES: RoutineItem[] = [
@@ -60,9 +68,43 @@ const DEFAULT_NOTES: NoteItem[] = [
   }
 ];
 
+const DEFAULT_STATS: UserStats = {
+  currentStreak: 0,
+  longestStreak: 0,
+  lastActiveDate: '',
+  tasksCompleted: 0,
+  goalsCompleted: 0,
+  focusHours: 0
+};
+
+const DEFAULT_ACHIEVEMENTS: Achievement[] = [
+  { id: 'a1', name: 'First Step', description: 'Complete your first task', icon: '🎯', isUnlocked: false, xpReward: 50 },
+  { id: 'a2', name: 'Focus Master', description: 'Study for 10 hours total', icon: '⏱️', isUnlocked: false, xpReward: 200 },
+  { id: 'a3', name: 'Streak 7', description: 'Maintain a 7-day streak', icon: '🔥', isUnlocked: false, xpReward: 500 },
+];
+
 export default function App() {
+  const { user, loading: authLoading, isGuest, logout } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
-  const [currentView, setCurrentView] = useState<string>('dashboard');
+  const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+  const [currentView, setCurrentView] = useState<string>(() => {
+    const hash = window.location.hash.replace('#', '');
+    return hash || 'dashboard';
+  });
+
+  const handleNavigate = React.useCallback((view: string) => {
+    setCurrentView(view);
+    window.location.hash = view;
+  }, []);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) setCurrentView(hash);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [isThemeLight, setIsThemeLight] = useState<boolean>(() => {
     const local = localStorage.getItem('study_theme_light');
@@ -113,6 +155,21 @@ export default function App() {
     return local ? JSON.parse(local) : DEFAULT_NOTES;
   });
 
+  const [tasks, setTasks] = useState<TaskItem[]>(() => {
+    const local = localStorage.getItem('study_tasks');
+    return local ? JSON.parse(local) : [];
+  });
+
+  const [stats, setStats] = useState<UserStats>(() => {
+    const local = localStorage.getItem('study_stats');
+    return local ? JSON.parse(local) : DEFAULT_STATS;
+  });
+
+  const [achievements, setAchievements] = useState<Achievement[]>(() => {
+    const local = localStorage.getItem('study_achievements');
+    return local ? JSON.parse(local) : DEFAULT_ACHIEVEMENTS;
+  });
+
   // Music state synchronization
   const [loadedTracks, setLoadedTracks] = useState<AudioTrack[]>(() => {
     const local = localStorage.getItem('study_tracks');
@@ -138,34 +195,216 @@ export default function App() {
     return () => clearTimeout(splashTimer);
   }, []);
 
+  // Fetch data from Firebase on login
+  useEffect(() => {
+    if (user && user.emailVerified && !authLoading) {
+      const fetchData = async () => {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.currentLevel) setCurrentLevel(data.currentLevel);
+            if (data.currentXP !== undefined) setCurrentXP(data.currentXP);
+            if (data.xpHistory) setXpHistory(data.xpHistory);
+            if (data.isThemeLight !== undefined) setIsThemeLight(data.isThemeLight);
+            if (data.stats) setStats(data.stats);
+            if (data.achievements) setAchievements(data.achievements);
+          }
+
+          const routinesSnap = await getDocs(collection(db, 'users', user.uid, 'routines'));
+          if (!routinesSnap.empty) {
+            setRoutines(routinesSnap.docs.map(d => d.data() as RoutineItem));
+          }
+          
+          const goalsSnap = await getDocs(collection(db, 'users', user.uid, 'goals'));
+          if (!goalsSnap.empty) {
+            setGoals(goalsSnap.docs.map(d => d.data() as GoalItem));
+          }
+
+          const notesSnap = await getDocs(collection(db, 'users', user.uid, 'notes'));
+          if (!notesSnap.empty) {
+            setNotes(notesSnap.docs.map(d => d.data() as NoteItem));
+          }
+
+          const tasksSnap = await getDocs(collection(db, 'users', user.uid, 'tasks'));
+          if (!tasksSnap.empty) {
+            setTasks(tasksSnap.docs.map(d => d.data() as TaskItem));
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      };
+
+      // Check if they have guest data
+      const hadGuestData = localStorage.getItem('study_guest_mode_migration_pending') === 'true';
+      if (hadGuestData) {
+        setShowMigrationPrompt(true);
+      } else {
+        fetchData();
+      }
+    }
+  }, [user, authLoading]);
+
+  const handleMigration = async (migrate: boolean) => {
+    setShowMigrationPrompt(false);
+    localStorage.removeItem('study_guest_mode_migration_pending');
+    
+    if (migrate && user) {
+      // Push local data to firebase
+      try {
+        const batch = writeBatch(db);
+        const userRef = doc(db, 'users', user.uid);
+        batch.update(userRef, {
+          currentLevel,
+          currentXP,
+          xpHistory,
+          isThemeLight,
+          stats,
+          achievements
+        });
+
+        routines.forEach(r => {
+          const ref = doc(db, 'users', user.uid, 'routines', r.id);
+          batch.set(ref, r);
+        });
+
+        goals.forEach(g => {
+          const ref = doc(db, 'users', user.uid, 'goals', g.id);
+          batch.set(ref, g);
+        });
+
+        notes.forEach(n => {
+          const ref = doc(db, 'users', user.uid, 'notes', n.id);
+          batch.set(ref, n);
+        });
+
+        tasks.forEach(t => {
+          const ref = doc(db, 'users', user.uid, 'tasks', t.id);
+          batch.set(ref, t);
+        });
+
+        await batch.commit();
+        alert('Data migrated successfully!');
+      } catch (err) {
+        console.error("Migration failed", err);
+        alert('Failed to migrate data.');
+      }
+    } else {
+      // Just fetch from Firebase (overwrite local)
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.currentLevel) setCurrentLevel(data.currentLevel);
+            if (data.currentXP !== undefined) setCurrentXP(data.currentXP);
+            if (data.xpHistory) setXpHistory(data.xpHistory);
+            if (data.isThemeLight !== undefined) setIsThemeLight(data.isThemeLight);
+            if (data.stats) setStats(data.stats);
+            if (data.achievements) setAchievements(data.achievements);
+          }
+
+          const routinesSnap = await getDocs(collection(db, 'users', user.uid, 'routines'));
+          if (!routinesSnap.empty) {
+            setRoutines(routinesSnap.docs.map(d => d.data() as RoutineItem));
+          }
+          
+          const goalsSnap = await getDocs(collection(db, 'users', user.uid, 'goals'));
+          if (!goalsSnap.empty) {
+            setGoals(goalsSnap.docs.map(d => d.data() as GoalItem));
+          }
+
+          const notesSnap = await getDocs(collection(db, 'users', user.uid, 'notes'));
+          if (!notesSnap.empty) {
+            setNotes(notesSnap.docs.map(d => d.data() as NoteItem));
+          }
+
+          const tasksSnap = await getDocs(collection(db, 'users', user.uid, 'tasks'));
+          if (!tasksSnap.empty) {
+            setTasks(tasksSnap.docs.map(d => d.data() as TaskItem));
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      }
+    }
+  };
+
   // Sync state data to storage
   useEffect(() => {
     localStorage.setItem('study_routines', JSON.stringify(routines));
-  }, [routines]);
+    if (user && user.emailVerified) {
+      routines.forEach(r => {
+        setDoc(doc(db, 'users', user.uid, 'routines', r.id), r).catch(console.error);
+      });
+    }
+  }, [routines, user]);
 
   useEffect(() => {
     localStorage.setItem('study_goals', JSON.stringify(goals));
-  }, [goals]);
+    if (user && user.emailVerified) {
+      goals.forEach(g => {
+        setDoc(doc(db, 'users', user.uid, 'goals', g.id), g).catch(console.error);
+      });
+    }
+  }, [goals, user]);
 
   useEffect(() => {
     localStorage.setItem('study_notes', JSON.stringify(notes));
-  }, [notes]);
+    if (user && user.emailVerified) {
+      notes.forEach(n => {
+        setDoc(doc(db, 'users', user.uid, 'notes', n.id), n).catch(console.error);
+      });
+    }
+  }, [notes, user]);
+
+  useEffect(() => {
+    localStorage.setItem('study_tasks', JSON.stringify(tasks));
+    if (user && user.emailVerified) {
+      tasks.forEach(t => {
+        setDoc(doc(db, 'users', user.uid, 'tasks', t.id), t).catch(console.error);
+      });
+    }
+  }, [tasks, user]);
 
   useEffect(() => {
     localStorage.setItem('study_tracks', JSON.stringify(loadedTracks));
   }, [loadedTracks]);
 
   useEffect(() => {
+    localStorage.setItem('study_stats', JSON.stringify(stats));
+    if (user && user.emailVerified) {
+      setDoc(doc(db, 'users', user.uid), { stats }, { merge: true }).catch(console.error);
+    }
+  }, [stats, user]);
+
+  useEffect(() => {
+    localStorage.setItem('study_achievements', JSON.stringify(achievements));
+    if (user && user.emailVerified) {
+      setDoc(doc(db, 'users', user.uid), { achievements }, { merge: true }).catch(console.error);
+    }
+  }, [achievements, user]);
+
+  useEffect(() => {
     localStorage.setItem('study_xp', currentXP.toString());
-  }, [currentXP]);
+    if (user && user.emailVerified) {
+      setDoc(doc(db, 'users', user.uid), { currentXP }, { merge: true }).catch(console.error);
+    }
+  }, [currentXP, user]);
 
   useEffect(() => {
     localStorage.setItem('study_level', currentLevel.toString());
-  }, [currentLevel]);
+    if (user && user.emailVerified) {
+      setDoc(doc(db, 'users', user.uid), { currentLevel }, { merge: true }).catch(console.error);
+    }
+  }, [currentLevel, user]);
 
   useEffect(() => {
     localStorage.setItem('study_xp_history', JSON.stringify(xpHistory));
-  }, [xpHistory]);
+    if (user && user.emailVerified) {
+      setDoc(doc(db, 'users', user.uid), { xpHistory }, { merge: true }).catch(console.error);
+    }
+  }, [xpHistory, user]);
 
   useEffect(() => {
     localStorage.setItem('study_theme_light', isThemeLight.toString());
@@ -174,7 +413,10 @@ export default function App() {
     } else {
       document.documentElement.classList.add('dark');
     }
-  }, [isThemeLight]);
+    if (user && user.emailVerified) {
+      setDoc(doc(db, 'users', user.uid), { isThemeLight }, { merge: true }).catch(console.error);
+    }
+  }, [isThemeLight, user]);
 
   // Clock runner ticker thread
   useEffect(() => {
@@ -442,6 +684,53 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {!showSplash && !authLoading && !user && !isGuest && (
+        <WelcomeScreen />
+      )}
+
+      {!showSplash && !authLoading && user && !user.emailVerified && !isGuest && (
+        <div className="fixed inset-0 z-[150] bg-black text-white flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white/10 backdrop-blur-xl p-8 rounded-3xl text-center border border-white/20">
+            <Mail className="w-16 h-16 mx-auto mb-6 opacity-80" />
+            <h2 className="text-3xl font-bold mb-4">Verify Your Email</h2>
+            <p className="opacity-70 mb-8 text-sm">
+              We've sent a verification link to {user.email}. Please check your inbox and verify your email to access the engine.
+            </p>
+            <button onClick={() => window.location.reload()} className="w-full py-4 bg-white text-black font-bold rounded-xl mb-4 transition-transform active:scale-95">
+              I have verified
+            </button>
+            <button onClick={logout} className="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all active:scale-95">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showMigrationPrompt && (
+        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-black/10 dark:border-white/10">
+            <h2 className="text-xl font-bold mb-4 dark:text-white">Migrate Guest Data?</h2>
+            <p className="text-sm opacity-70 mb-6 dark:text-white">
+              Would you like to transfer your guest progress to this account?
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => handleMigration(true)}
+                className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black font-semibold rounded-xl"
+              >
+                Yes
+              </button>
+              <button 
+                onClick={() => handleMigration(false)}
+                className="flex-1 py-3 bg-black/5 dark:bg-white/10 dark:text-white font-semibold rounded-xl"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={`min-h-[100dvh] flex flex-col transition-all duration-300 ${getJarvisThemeClass()} bg-transparent`}>
       
       {/* Background Ambient Layers */}
@@ -511,7 +800,7 @@ export default function App() {
                       onSetAlarmTime={(time) => setAlarmTime(time)}
                       triggerBuzzerDemo={runBuzzerDemoTester}
                       triggerVoiceDemo={runSpeechDemoTester}
-                      onNavigate={(view) => setCurrentView(view)}
+                      onNavigate={handleNavigate}
                       onAwardXP={handleAwardXP}
                       xpHistory={xpHistory}
                     />
@@ -562,6 +851,14 @@ export default function App() {
                       setIsPlaying={setIsPlaying}
                     />
                   )}
+
+                  {currentView === 'profile' && (
+                    <UserProfile currentLevel={currentLevel} currentXP={currentXP} stats={stats} achievements={achievements} />
+                  )}
+
+                  {currentView === 'tasks' && (
+                    <Tasks tasks={tasks} onUpdateTasks={setTasks} onAwardXP={handleAwardXP} />
+                  )}
                 </motion.div>
               </AnimatePresence>
             </section>
@@ -571,7 +868,7 @@ export default function App() {
         {currentView === 'jarvis' && (
           <div className="flex-1 w-full h-[100dvh]">
             <Jarvis
-              onNavigate={(v) => setCurrentView(v)}
+              onNavigate={handleNavigate}
               selectedTheme={jarvisTheme}
               onChangeTheme={setJarvisTheme}
               isThemeLight={isThemeLight}
@@ -585,7 +882,7 @@ export default function App() {
       {/* Floating Premium Bottom Navigation */}
       {currentView !== 'jarvis' && (
         <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto flex items-center justify-between gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border bg-white/70 dark:bg-[#18181b]/80 border-black/5 dark:border-white/10 shadow-black/5 dark:shadow-black/50 transition-colors duration-300">
+          <div className="pointer-events-auto flex items-center justify-between gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border bg-white/70 dark:bg-[#18181b]/80 border-black/5 dark:border-white/10 shadow-black/5 dark:shadow-black/50 transition-colors duration-300 w-full max-w-fit overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {[
               { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
               { id: 'routine', icon: Sliders, label: 'Routine' },
@@ -596,7 +893,7 @@ export default function App() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setCurrentView(item.id)}
+                  onClick={() => handleNavigate(item.id)}
                   className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
                     isSelected
                       ? 'text-black dark:text-white'
@@ -617,7 +914,7 @@ export default function App() {
             
             {/* FAB Middle Button */}
             <button
-              onClick={() => setCurrentView('jarvis')}
+              onClick={() => handleNavigate('jarvis')}
               className="relative mx-1 sm:mx-2 p-4 sm:p-5 rounded-full flex items-center justify-center transition-all duration-500 group shadow-lg bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 hover:-translate-y-1"
             >
               <Bot className="w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-300 group-hover:scale-110" strokeWidth={2.5} />
@@ -625,15 +922,17 @@ export default function App() {
 
             {[
               { id: 'goals', icon: Target, label: 'Goals' },
+              { id: 'tasks', icon: FileText, label: 'Tasks' },
               { id: 'music', icon: Music, label: 'Music' },
               { id: 'tools', icon: Settings, label: 'Settings' }, 
+              { id: 'profile', icon: User, label: 'Profile' },
             ].map((item) => {
               const isSelected = currentView === item.id;
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
-                  onClick={() => setCurrentView(item.id)}
+                  onClick={() => handleNavigate(item.id)}
                   className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
                     isSelected
                       ? 'text-black dark:text-white'

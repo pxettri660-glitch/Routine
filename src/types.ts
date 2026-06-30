@@ -17,6 +17,16 @@ export interface GoalItem {
   lastCompletedDate?: string;
 }
 
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  subject?: string;
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: string;
+  completed: boolean;
+}
+
 export interface NoteItem {
   id: string;
   title: string;
@@ -35,4 +45,23 @@ export interface AudioTrack {
 export interface XPHistory {
   date: string; // YYYY-MM-DD
   xp: number;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+  isUnlocked: boolean;
+  xpReward: number;
+}
+
+export interface UserStats {
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate: string;
+  tasksCompleted: number;
+  goalsCompleted: number;
+  focusHours: number;
 }

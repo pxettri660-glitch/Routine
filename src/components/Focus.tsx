@@ -13,6 +13,8 @@ const Focus = React.memo(function Focus({ onAwardXP }: { onAwardXP?: (amount: nu
   const [focusScore, setFocusScore] = useState(85);
   const [totalFocusTime, setTotalFocusTime] = useState(120);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   useEffect(() => {
     let interval: any = null;
     if (isActive) {
@@ -29,19 +31,46 @@ const Focus = React.memo(function Focus({ onAwardXP }: { onAwardXP?: (amount: nu
         setSessionCount((prev) => prev + 1);
         setTotalFocusTime((prev) => prev + 25);
         if (onAwardXP) onAwardXP(50);
+        if (isFullscreen && document.fullscreenElement) document.exitFullscreen();
+        setIsFullscreen(false);
         alert('Focus session completed! +50 XP');
       }
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isActive, timeLeft, mode, onAwardXP]);
+  }, [isActive, timeLeft, mode, onAwardXP, isFullscreen]);
 
-  const toggleTimer = () => setIsActive(!isActive);
+  const toggleTimer = async () => {
+    if (!isActive && !isFullscreen) {
+      try {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        console.warn("Fullscreen API failed", err);
+      }
+    } else if (isActive && isFullscreen) {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        setIsFullscreen(false);
+      } catch (err) {
+        console.warn("Fullscreen exit failed", err);
+      }
+    }
+    setIsActive(!isActive);
+  };
 
-  const resetTimer = () => {
+  const resetTimer = async () => {
     setIsActive(false);
     setTimeLeft(mode === 'pomodoro' ? 25 * 60 : 0);
+    if (isFullscreen) {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        setIsFullscreen(false);
+      } catch (err) {
+        console.warn("Fullscreen exit failed", err);
+      }
+    }
   };
 
   const switchMode = (newMode: 'pomodoro' | 'stopwatch') => {
@@ -96,30 +125,35 @@ const Focus = React.memo(function Focus({ onAwardXP }: { onAwardXP?: (amount: nu
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Timer UI */}
-        <div className="md:col-span-2 p-8 sm:p-12 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex flex-col items-center justify-center relative overflow-hidden group">
+        <div className={isFullscreen 
+          ? "fixed inset-0 z-[100] bg-white dark:bg-[#09090b] flex flex-col items-center justify-center" 
+          : "md:col-span-2 p-8 sm:p-12 rounded-[2rem] backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl flex flex-col items-center justify-center relative overflow-hidden group"}>
+          
           <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-96 sm:h-96 rounded-full blur-[80px] sm:blur-[120px] pointer-events-none transition-all duration-1000 ${isActive ? 'bg-orange-500/30 dark:bg-orange-500/20 scale-110' : 'bg-black/5 dark:bg-white/5 scale-90'}`} />
           
-          <div className="flex bg-black/5 dark:bg-white/5 p-1.5 rounded-full border border-black/5 dark:border-white/10 z-10 mb-8 sm:mb-12">
-            <button 
-              onClick={() => switchMode('pomodoro')}
-              className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-widest transition-all duration-300 ${mode === 'pomodoro' ? 'bg-white dark:bg-black text-black dark:text-white shadow-lg' : 'opacity-50 hover:opacity-100'}`}
-            >
-              Pomodoro
-            </button>
-            <button 
-              onClick={() => switchMode('stopwatch')}
-              className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-widest transition-all duration-300 ${mode === 'stopwatch' ? 'bg-white dark:bg-black text-black dark:text-white shadow-lg' : 'opacity-50 hover:opacity-100'}`}
-            >
-              Stopwatch
-            </button>
-          </div>
+          {!isFullscreen && (
+            <div className="flex bg-black/5 dark:bg-white/5 p-1.5 rounded-full border border-black/5 dark:border-white/10 z-10 mb-8 sm:mb-12">
+              <button 
+                onClick={() => switchMode('pomodoro')}
+                className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-widest transition-all duration-300 ${mode === 'pomodoro' ? 'bg-white dark:bg-black text-black dark:text-white shadow-lg' : 'opacity-50 hover:opacity-100'}`}
+              >
+                Pomodoro
+              </button>
+              <button 
+                onClick={() => switchMode('stopwatch')}
+                className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-widest transition-all duration-300 ${mode === 'stopwatch' ? 'bg-white dark:bg-black text-black dark:text-white shadow-lg' : 'opacity-50 hover:opacity-100'}`}
+              >
+                Stopwatch
+              </button>
+            </div>
+          )}
 
-          <div className="text-[5rem] sm:text-[8rem] font-black tracking-tighter tabular-nums leading-none z-10 font-mono text-transparent bg-clip-text bg-gradient-to-b from-black to-black/60 dark:from-white dark:to-white/60 drop-shadow-sm mb-4">
+          <div className={`font-black tracking-tighter tabular-nums leading-none z-10 font-mono text-transparent bg-clip-text bg-gradient-to-b from-black to-black/60 dark:from-white dark:to-white/60 drop-shadow-sm mb-4 ${isFullscreen ? 'text-[8rem] sm:text-[15rem]' : 'text-[5rem] sm:text-[8rem]'}`}>
             {formatTime(timeLeft)}
           </div>
 
           <p className={`font-mono text-xs sm:text-sm tracking-[0.2em] font-bold z-10 transition-colors duration-500 ${isActive ? 'text-orange-500' : 'opacity-40'}`}>
-            {mode === 'pomodoro' ? 'DEEP FOCUS SESSION' : 'OPEN FOCUS TRACKING'}
+            {isFullscreen ? 'DISTRACTION-FREE DEEP WORK' : mode === 'pomodoro' ? 'DEEP FOCUS SESSION' : 'OPEN FOCUS TRACKING'}
           </p>
 
           <div className="flex gap-4 sm:gap-6 mt-10 sm:mt-12 z-10">
