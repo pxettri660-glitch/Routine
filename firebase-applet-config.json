@@ -1,10 +1,9 @@
 {
-  "projectId": "skillful-broker-pkhb0",
-  "appId": "1:118387467717:web:96d9d56b136a3bf9c897ac",
-  "apiKey": "AIzaSyBnVZ8DByoQy8KvkUYij_8ETn66LMy8m5k",
-  "authDomain": "skillful-broker-pkhb0.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-princeengine-97cc70fc-2c6d-41c7-ab77-d82a8f70351d",
-  "storageBucket": "skillful-broker-pkhb0.firebasestorage.app",
-  "messagingSenderId": "118387467717",
+  "projectId": "com-student-engine",
+  "appId": "1:492106716732:android:73436a5a26ca78ec8c5539",
+  "apiKey": "AIzaSyBRSOCKVUXnPaq7QA72B2WXXCHD38Yx-Os",
+  "authDomain": "com-student-engine.firebaseapp.com",
+  "storageBucket": "com-student-engine.firebasestorage.app",
+  "messagingSenderId": "492106716732",
   "measurementId": ""
 }

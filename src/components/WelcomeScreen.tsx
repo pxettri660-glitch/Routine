@@ -25,6 +25,7 @@ export default function WelcomeScreen() {
 
   const formatFirebaseError = (err: any) => {
     const code = err.code || '';
+    if (code === 'auth/api-key-not-valid') return 'API Key is restricted. Please go to Google Cloud Console, find this API key, and remove the Android app restrictions so it can work in this Web preview.';
     if (code === 'auth/operation-not-allowed') return 'This sign-in method is not enabled. Please enable it in the Firebase Console (Authentication > Sign-in method).';
     if (code === 'auth/invalid-email') return 'Please enter a valid email address.';
     if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') return 'Invalid email or password.';

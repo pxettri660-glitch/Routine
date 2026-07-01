@@ -247,7 +247,23 @@ export default function App() {
 
   const handleMigration = async (migrate: boolean) => {
     setShowMigrationPrompt(false);
-    localStorage.removeItem('study_guest_mode_migration_pending');
+    
+    // Clear all localStorage usage
+    const keysToRemove = [
+      'study_guest_mode_migration_pending',
+      'study_theme_light',
+      'study_xp',
+      'study_level',
+      'study_xp_history',
+      'study_routines',
+      'study_goals',
+      'study_notes',
+      'study_tasks',
+      'study_stats',
+      'study_achievements',
+      'study_tracks'
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
     
     if (migrate && user) {
       // Push local data to firebase
@@ -332,82 +348,92 @@ export default function App() {
 
   // Sync state data to storage
   useEffect(() => {
-    localStorage.setItem('study_routines', JSON.stringify(routines));
     if (user && user.emailVerified) {
       routines.forEach(r => {
         setDoc(doc(db, 'users', user.uid, 'routines', r.id), r).catch(console.error);
       });
+    } else if (isGuest) {
+      localStorage.setItem('study_routines', JSON.stringify(routines));
     }
-  }, [routines, user]);
+  }, [routines, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_goals', JSON.stringify(goals));
     if (user && user.emailVerified) {
       goals.forEach(g => {
         setDoc(doc(db, 'users', user.uid, 'goals', g.id), g).catch(console.error);
       });
+    } else if (isGuest) {
+      localStorage.setItem('study_goals', JSON.stringify(goals));
     }
-  }, [goals, user]);
+  }, [goals, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_notes', JSON.stringify(notes));
     if (user && user.emailVerified) {
       notes.forEach(n => {
         setDoc(doc(db, 'users', user.uid, 'notes', n.id), n).catch(console.error);
       });
+    } else if (isGuest) {
+      localStorage.setItem('study_notes', JSON.stringify(notes));
     }
-  }, [notes, user]);
+  }, [notes, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_tasks', JSON.stringify(tasks));
     if (user && user.emailVerified) {
       tasks.forEach(t => {
         setDoc(doc(db, 'users', user.uid, 'tasks', t.id), t).catch(console.error);
       });
+    } else if (isGuest) {
+      localStorage.setItem('study_tasks', JSON.stringify(tasks));
     }
-  }, [tasks, user]);
+  }, [tasks, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_tracks', JSON.stringify(loadedTracks));
-  }, [loadedTracks]);
+    if (isGuest) {
+      localStorage.setItem('study_tracks', JSON.stringify(loadedTracks));
+    }
+  }, [loadedTracks, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_stats', JSON.stringify(stats));
     if (user && user.emailVerified) {
       setDoc(doc(db, 'users', user.uid), { stats }, { merge: true }).catch(console.error);
+    } else if (isGuest) {
+      localStorage.setItem('study_stats', JSON.stringify(stats));
     }
-  }, [stats, user]);
+  }, [stats, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_achievements', JSON.stringify(achievements));
     if (user && user.emailVerified) {
       setDoc(doc(db, 'users', user.uid), { achievements }, { merge: true }).catch(console.error);
+    } else if (isGuest) {
+      localStorage.setItem('study_achievements', JSON.stringify(achievements));
     }
-  }, [achievements, user]);
+  }, [achievements, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_xp', currentXP.toString());
     if (user && user.emailVerified) {
       setDoc(doc(db, 'users', user.uid), { currentXP }, { merge: true }).catch(console.error);
+    } else if (isGuest) {
+      localStorage.setItem('study_xp', currentXP.toString());
     }
-  }, [currentXP, user]);
+  }, [currentXP, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_level', currentLevel.toString());
     if (user && user.emailVerified) {
       setDoc(doc(db, 'users', user.uid), { currentLevel }, { merge: true }).catch(console.error);
+    } else if (isGuest) {
+      localStorage.setItem('study_level', currentLevel.toString());
     }
-  }, [currentLevel, user]);
+  }, [currentLevel, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_xp_history', JSON.stringify(xpHistory));
     if (user && user.emailVerified) {
       setDoc(doc(db, 'users', user.uid), { xpHistory }, { merge: true }).catch(console.error);
+    } else if (isGuest) {
+      localStorage.setItem('study_xp_history', JSON.stringify(xpHistory));
     }
-  }, [xpHistory, user]);
+  }, [xpHistory, user, isGuest]);
 
   useEffect(() => {
-    localStorage.setItem('study_theme_light', isThemeLight.toString());
     if (isThemeLight) {
       document.documentElement.classList.remove('dark');
     } else {
@@ -415,8 +441,10 @@ export default function App() {
     }
     if (user && user.emailVerified) {
       setDoc(doc(db, 'users', user.uid), { isThemeLight }, { merge: true }).catch(console.error);
+    } else if (isGuest) {
+      localStorage.setItem('study_theme_light', isThemeLight.toString());
     }
-  }, [isThemeLight, user]);
+  }, [isThemeLight, user, isGuest]);
 
   // Clock runner ticker thread
   useEffect(() => {
