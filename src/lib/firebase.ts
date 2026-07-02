@@ -1,27 +1,40 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBRSOCKVUXnPaq7QA72B2WXXCHD38Yx-Os",
-  authDomain: "com-student-engine.firebaseapp.com",
-  projectId: "com-student-engine",
-  storageBucket: "com-student-engine.firebasestorage.app",
-  messagingSenderId: "492106716732",
-  appId: "1:492106716732:android:73436a5a26ca78ec8c5539",
+  apiKey: "AIzaSyBU4GCmGzVW4FhEMCK-_OhUcmDftVSYdcM",
+  authDomain: "student-engine-8f6e0.firebaseapp.com",
+  projectId: "student-engine-8f6e0",
+  storageBucket: "student-engine-8f6e0.firebasestorage.app",
+  messagingSenderId: "29474777550",
+  appId: "1:29474777550:web:af9a4d7857e3c716b2e39f",
+  measurementId: "G-6T5E39JK5V"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app); // Note: removed specific databaseId to use default database for standard projects
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-enableIndexedDbPersistence(db).catch((err) => {
-  console.warn('Firebase offline persistence error:', err.code);
-});
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
-// Ensure auth state persists
+export let analytics;
+if (typeof window !== "undefined") {
+  analytics = getAnalytics(app);
+}
+
+export const storage = getStorage(app);
+export const googleProvider = new GoogleAuthProvider();
+
+try {
+  enableIndexedDbPersistence(db).catch((err) => {
+    console.warn("Firestore offline persistence not enabled:", err.code);
+  });
+} catch (e) {
+  console.warn("Firestore offline persistence error:", e);
+}
+
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-const googleProvider = new GoogleAuthProvider();
-
-export { app, auth, db, googleProvider };
+export default app;

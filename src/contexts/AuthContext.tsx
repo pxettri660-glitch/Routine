@@ -1,13 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { DEFAULT_ROUTINES, DEFAULT_GOALS, DEFAULT_NOTES, DEFAULT_STATS, DEFAULT_ACHIEVEMENTS } from '../lib/defaults';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  isGuest: boolean;
-  setGuestMode: (value: boolean) => void;
   logout: () => Promise<void>;
   updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>;
 }
@@ -15,8 +14,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  isGuest: false,
-  setGuestMode: () => {},
   logout: async () => {},
   updateUserProfile: async () => {}
 });
@@ -26,59 +23,110 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(() => {
-    return localStorage.getItem('study_guest_mode') === 'true';
-  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // Fetch or create user doc
-        const userRef = doc(db, 'users', currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            displayName: currentUser.displayName || 'Student',
-            email: currentUser.email,
-            photoURL: currentUser.photoURL || '',
-            joinDate: new Date().toISOString(),
-            currentLevel: 1,
-            currentXP: 0,
-            xpHistory: [],
-            isThemeLight: false
-          });
+      try {
+        if (currentUser) {
+          // 1. Set the user state immediately so the app can render
+          setUser(currentUser);
+          
+          // 2. Ensure the base profile document exists
+          const profileRef = doc(db, 'users', currentUser.uid, 'profile', 'data');
+          try {
+            const profileSnap = await getDoc(profileRef);
+            
+            if (!profileSnap.exists()) {
+              const batch = writeBatch(db);
+              
+              // Base profile
+              batch.set(profileRef, {
+                uid: currentUser.uid,
+                name: currentUser.displayName || 'Student',
+                email: currentUser.email,
+                photoURL: currentUser.photoURL || '',
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp(),
+              });
+
+              // Initialize Stats
+              batch.set(doc(db, 'users', currentUser.uid, 'stats', 'data'), {
+                currentXP: 0,
+                currentLevel: 1,
+                stats: DEFAULT_STATS,
+                achievements: DEFAULT_ACHIEVEMENTS,
+                xpHistory: []
+              });
+
+              // Initialize Settings
+              batch.set(doc(db, 'users', currentUser.uid, 'settings', 'data'), {
+                isThemeLight: false,
+                jarvisTheme: 'cyan',
+                alarmTime: '04:45',
+                isAlarmEnabled: true
+              });
+
+              // Seed collections
+              DEFAULT_ROUTINES.forEach(r => {
+                batch.set(doc(db, 'users', currentUser.uid, 'routines', r.id), r);
+              });
+              DEFAULT_GOALS.forEach(g => {
+                batch.set(doc(db, 'users', currentUser.uid, 'goals', g.id), g);
+              });
+              DEFAULT_NOTES.forEach(n => {
+                batch.set(doc(db, 'users', currentUser.uid, 'notes', n.id), n);
+              });
+
+              await batch.commit();
+            } else {
+              // Update last login
+              await setDoc(profileRef, { lastLogin: serverTimestamp() }, { merge: true });
+            }
+          } catch (e: any) {
+            if (e.code === 'unavailable') {
+              console.warn("Client is offline, skipping profile sync.");
+            } else {
+              console.error("Profile sync error:", e);
+            }
+          }
+        } else {
+          setUser(null);
         }
-        setGuestMode(false);
+      } catch (error) {
+        console.error("Auth sync error:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const setGuestMode = (value: boolean) => {
-    setIsGuest(value);
-    localStorage.setItem('study_guest_mode', value.toString());
-  };
-
   const logout = async () => {
-    await signOut(auth);
-    setGuestMode(false);
-    localStorage.removeItem('study_guest_mode');
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   const updateUserProfile = async (displayName: string, photoURL?: string) => {
     if (auth.currentUser) {
-      await updateProfile(auth.currentUser, { displayName, photoURL });
-      setUser({ ...auth.currentUser } as User);
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await setDoc(userRef, { displayName, photoURL }, { merge: true });
+      try {
+        await updateProfile(auth.currentUser, { displayName, photoURL });
+        setUser({ ...auth.currentUser } as User);
+        
+        const profileRef = doc(db, 'users', auth.currentUser.uid, 'profile', 'data');
+        await setDoc(profileRef, { name: displayName, photoURL: photoURL || '' }, { merge: true });
+      } catch (error) {
+        console.error("Update profile error:", error);
+        throw error;
+      }
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isGuest, setGuestMode, logout, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, loading, logout, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

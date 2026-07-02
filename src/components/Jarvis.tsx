@@ -9,6 +9,7 @@ import {
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'motion/react';
+import { useFirestoreCollection } from '../hooks/useFirestoreSync';
 
 interface ChatMessage {
   id: string;
@@ -31,10 +32,7 @@ export default function Jarvis({
   isThemeLight = false,
   onToggleLightDarkTheme
 }: JarvisProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = localStorage.getItem('study_chat_messages');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [messages, setMessages] = useFirestoreCollection<ChatMessage>('chat_messages', []);
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [inputVal, setInputVal] = useState('');
@@ -45,10 +43,6 @@ export default function Jarvis({
   const [attachedImage, setAttachedImage] = useState<{ name: string; mimeType: string; data: string } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    localStorage.setItem('study_chat_messages', JSON.stringify(messages));
-  }, [messages]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,7 +72,7 @@ export default function Jarvis({
       content: query || '[File Attached]',
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev: ChatMessage[]) => [...prev, userMsg]);
     setInputVal('');
     setIsThinking(true);
 
@@ -111,7 +105,7 @@ export default function Jarvis({
         modelUsed: rdata.model || 'Unknown Model'
       };
 
-      setMessages(prev => [...prev, botMsg]);
+      setMessages((prev: ChatMessage[]) => [...prev, botMsg]);
       setAttachedImage(null);
 
     } catch (err: any) {
@@ -121,7 +115,7 @@ export default function Jarvis({
         role: 'assistant',
         content: `Error: Could not connect to AI services. ${err.message}`
       };
-      setMessages(prev => [...prev, errBotMsg]);
+      setMessages((prev: ChatMessage[]) => [...prev, errBotMsg]);
     } finally {
       setIsThinking(false);
     }

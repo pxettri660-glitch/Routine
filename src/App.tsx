@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 
 import { RoutineItem, GoalItem, NoteItem, AudioTrack, XPHistory, TaskItem, UserStats, Achievement } from './types';
+import { DEFAULT_ROUTINES, DEFAULT_GOALS, DEFAULT_NOTES, DEFAULT_STATS, DEFAULT_ACHIEVEMENTS } from './lib/defaults';
+import { useFirestoreCollection, useFirestoreDocument } from './hooks/useFirestoreSync';
 import Dashboard from './components/Dashboard';
 import Routine from './components/Routine';
 import Goals from './components/Goals';
@@ -38,55 +40,11 @@ import WelcomeScreen from './components/WelcomeScreen';
 import UserProfile from './components/UserProfile';
 import { useAuth } from './contexts/AuthContext';
 import { db } from './lib/firebase';
-import { doc, getDoc, setDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
-
-// Standard Initial Seeds
-const DEFAULT_ROUTINES: RoutineItem[] = [
-  { id: 'r1', start: "04:45", end: "05:00", title: "Wake Up & Fresh (Alarm Active)", desc: "Triggering hard alarm buzzer sequence." },
-  { id: 'r2', start: "05:00", end: "05:45", title: "Ready for Study", desc: "Get fresh, prepare your workspace, get focused." },
-  { id: 'r3', start: "05:45", end: "13:00", title: "College Study hours Session", desc: "Focus intensely on lectures and revision." },
-  { id: 'r4', start: "13:30", end: "15:00", title: "Time for Homework", desc: "Complete all regular written tasks." },
-  { id: 'r5', start: "15:00", end: "17:00", title: "Time for Coding", desc: "Code daily, stay consistent." },
-  { id: 'r6', start: "17:00", end: "21:00", title: "Reading time for PCM", desc: "Read carefully, focus on concepts of the questions." },
-  { id: 'r7', start: "21:00", end: "22:00", title: "Family time & dinner time", desc: "Listen to music or relax with mobile entertainment streams." }
-];
-
-const DEFAULT_GOALS: GoalItem[] = [
-  { id: 'g1', title: "Complete Homework Assignments", completed: false, category: 'academic' },
-  { id: 'g2', title: "Read Science Chapter Thoroughly", completed: false, category: 'academic' },
-  { id: 'g3', title: "Daily Coding Practise", completed: false, category: 'coding' },
-  { id: 'g4', title: "Maintain Dashboard Log updates", completed: false, category: 'personal' }
-];
-
-const DEFAULT_NOTES: NoteItem[] = [
-  {
-    id: 'n1',
-    title: "Study Engine Manual",
-    content: "🎓 WELCOME TO STUDY ENGINE v5 — ULTIMATE PRODUCTION COCKPIT\n=======================================================\n\nThis system is fully automated. \nIt runs a dedicated local scheduler to track sequence directives seamlessly.\n\n⚡ SPECIAL CONTROLS:\n• Synthesizer Alarms: Tested and triggered at scheduled intervals.\n• Multi-Page Notebook: Formatted specifically for syllabus concepts and homework proofs.\n• Browser Focus Synthesizers: Built-in binaural study beats located in the Audio Beats tab.\n• Study Assistant AI: Fully voice-integrated companion utilizing Google Gemini models on the server.\n\nStay consistent!",
-    category: "Scratchpad",
-    updatedAt: new Date().toLocaleString()
-  }
-];
-
-const DEFAULT_STATS: UserStats = {
-  currentStreak: 0,
-  longestStreak: 0,
-  lastActiveDate: '',
-  tasksCompleted: 0,
-  goalsCompleted: 0,
-  focusHours: 0
-};
-
-const DEFAULT_ACHIEVEMENTS: Achievement[] = [
-  { id: 'a1', name: 'First Step', description: 'Complete your first task', icon: '🎯', isUnlocked: false, xpReward: 50 },
-  { id: 'a2', name: 'Focus Master', description: 'Study for 10 hours total', icon: '⏱️', isUnlocked: false, xpReward: 200 },
-  { id: 'a3', name: 'Streak 7', description: 'Maintain a 7-day streak', icon: '🔥', isUnlocked: false, xpReward: 500 },
-];
+import { doc, getDoc, writeBatch } from 'firebase/firestore';
 
 export default function App() {
-  const { user, loading: authLoading, isGuest, logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
-  const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [currentView, setCurrentView] = useState<string>(() => {
     const hash = window.location.hash.replace('#', '');
     return hash || 'dashboard';
@@ -105,82 +63,30 @@ export default function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+  
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
-  const [isThemeLight, setIsThemeLight] = useState<boolean>(() => {
-    const local = localStorage.getItem('study_theme_light');
-    if (local !== null) return local === 'true';
-    return false; // Default to dark mode
-  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
-  // Gamification Engine State
-  const [currentXP, setCurrentXP] = useState<number>(() => {
-    const local = localStorage.getItem('study_xp');
-    return local ? parseInt(local) : 0;
-  });
+  // Firestore Synced States
+  const [routines, setRoutines] = useFirestoreCollection<RoutineItem>('routines', DEFAULT_ROUTINES);
+  const [goals, setGoals] = useFirestoreCollection<GoalItem>('goals', DEFAULT_GOALS);
+  const [notes, setNotes] = useFirestoreCollection<NoteItem>('notes', DEFAULT_NOTES);
+  const [tasks, setTasks] = useFirestoreCollection<TaskItem>('tasks', []);
+  const [loadedTracks, setLoadedTracks] = useFirestoreCollection<AudioTrack>('tracks', []);
+  
+  const [currentXP, setCurrentXP] = useFirestoreDocument<number>('users/{uid}/stats/data', 'currentXP', 0);
+  const [currentLevel, setCurrentLevel] = useFirestoreDocument<number>('users/{uid}/stats/data', 'currentLevel', 1);
+  const [xpHistory, setXpHistory] = useFirestoreDocument<XPHistory[]>('users/{uid}/stats/data', 'xpHistory', []);
+  const [stats, setStats] = useFirestoreDocument<UserStats>('users/{uid}/stats/data', 'stats', DEFAULT_STATS);
+  const [achievements, setAchievements] = useFirestoreDocument<Achievement[]>('users/{uid}/stats/data', 'achievements', DEFAULT_ACHIEVEMENTS);
 
-  const [currentLevel, setCurrentLevel] = useState<number>(() => {
-    const local = localStorage.getItem('study_level');
-    return local ? parseInt(local) : 1;
-  });
+  const [isThemeLight, setIsThemeLight] = useFirestoreDocument<boolean>('users/{uid}/settings/data', 'isThemeLight', false);
+  const [jarvisTheme, setJarvisTheme] = useFirestoreDocument<'cyan' | 'red' | 'purple' | 'gold'>('users/{uid}/settings/data', 'jarvisTheme', 'cyan');
+  const [alarmTime, setAlarmTime] = useFirestoreDocument<string>('users/{uid}/settings/data', 'alarmTime', '04:45');
+  const [isAlarmEnabled, setIsAlarmEnabled] = useFirestoreDocument<boolean>('users/{uid}/settings/data', 'isAlarmEnabled', true);
 
-  const [xpHistory, setXpHistory] = useState<XPHistory[]>(() => {
-    const local = localStorage.getItem('study_xp_history');
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-
-  // Controls for active Jarvis cockpit style ("cyan", "red", "purple", "gold")
-  const [jarvisTheme, setJarvisTheme] = useState<'cyan' | 'red' | 'purple' | 'gold'>('cyan');
-
-  // Core schedules and local-database states with client-side persistence
-  const [routines, setRoutines] = useState<RoutineItem[]>(() => {
-    const local = localStorage.getItem('study_routines');
-    return local ? JSON.parse(local) : DEFAULT_ROUTINES;
-  });
-
-  const [goals, setGoals] = useState<GoalItem[]>(() => {
-    const local = localStorage.getItem('study_goals');
-    return local ? JSON.parse(local) : DEFAULT_GOALS;
-  });
-
-  const [notes, setNotes] = useState<NoteItem[]>(() => {
-    const local = localStorage.getItem('study_notes');
-    return local ? JSON.parse(local) : DEFAULT_NOTES;
-  });
-
-  const [tasks, setTasks] = useState<TaskItem[]>(() => {
-    const local = localStorage.getItem('study_tasks');
-    return local ? JSON.parse(local) : [];
-  });
-
-  const [stats, setStats] = useState<UserStats>(() => {
-    const local = localStorage.getItem('study_stats');
-    return local ? JSON.parse(local) : DEFAULT_STATS;
-  });
-
-  const [achievements, setAchievements] = useState<Achievement[]>(() => {
-    const local = localStorage.getItem('study_achievements');
-    return local ? JSON.parse(local) : DEFAULT_ACHIEVEMENTS;
-  });
-
-  // Music state synchronization
-  const [loadedTracks, setLoadedTracks] = useState<AudioTrack[]>(() => {
-    const local = localStorage.getItem('study_tracks');
-    return local ? JSON.parse(local) : [];
-  });
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-
-  // Alarm options state
-  const [alarmTime, setAlarmTime] = useState<string>('04:45');
-  const [isAlarmEnabled, setIsAlarmEnabled] = useState<boolean>(true);
   const [isAlarmActive, setIsAlarmActive] = useState<boolean>(false);
 
   // Tracking logic references
@@ -195,256 +101,13 @@ export default function App() {
     return () => clearTimeout(splashTimer);
   }, []);
 
-  // Fetch data from Firebase on login
-  useEffect(() => {
-    if (user && user.emailVerified && !authLoading) {
-      const fetchData = async () => {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.currentLevel) setCurrentLevel(data.currentLevel);
-            if (data.currentXP !== undefined) setCurrentXP(data.currentXP);
-            if (data.xpHistory) setXpHistory(data.xpHistory);
-            if (data.isThemeLight !== undefined) setIsThemeLight(data.isThemeLight);
-            if (data.stats) setStats(data.stats);
-            if (data.achievements) setAchievements(data.achievements);
-          }
-
-          const routinesSnap = await getDocs(collection(db, 'users', user.uid, 'routines'));
-          if (!routinesSnap.empty) {
-            setRoutines(routinesSnap.docs.map(d => d.data() as RoutineItem));
-          }
-          
-          const goalsSnap = await getDocs(collection(db, 'users', user.uid, 'goals'));
-          if (!goalsSnap.empty) {
-            setGoals(goalsSnap.docs.map(d => d.data() as GoalItem));
-          }
-
-          const notesSnap = await getDocs(collection(db, 'users', user.uid, 'notes'));
-          if (!notesSnap.empty) {
-            setNotes(notesSnap.docs.map(d => d.data() as NoteItem));
-          }
-
-          const tasksSnap = await getDocs(collection(db, 'users', user.uid, 'tasks'));
-          if (!tasksSnap.empty) {
-            setTasks(tasksSnap.docs.map(d => d.data() as TaskItem));
-          }
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        }
-      };
-
-      // Check if they have guest data
-      const hadGuestData = localStorage.getItem('study_guest_mode_migration_pending') === 'true';
-      if (hadGuestData) {
-        setShowMigrationPrompt(true);
-      } else {
-        fetchData();
-      }
-    }
-  }, [user, authLoading]);
-
-  const handleMigration = async (migrate: boolean) => {
-    setShowMigrationPrompt(false);
-    
-    // Clear all localStorage usage
-    const keysToRemove = [
-      'study_guest_mode_migration_pending',
-      'study_theme_light',
-      'study_xp',
-      'study_level',
-      'study_xp_history',
-      'study_routines',
-      'study_goals',
-      'study_notes',
-      'study_tasks',
-      'study_stats',
-      'study_achievements',
-      'study_tracks'
-    ];
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    
-    if (migrate && user) {
-      // Push local data to firebase
-      try {
-        const batch = writeBatch(db);
-        const userRef = doc(db, 'users', user.uid);
-        batch.update(userRef, {
-          currentLevel,
-          currentXP,
-          xpHistory,
-          isThemeLight,
-          stats,
-          achievements
-        });
-
-        routines.forEach(r => {
-          const ref = doc(db, 'users', user.uid, 'routines', r.id);
-          batch.set(ref, r);
-        });
-
-        goals.forEach(g => {
-          const ref = doc(db, 'users', user.uid, 'goals', g.id);
-          batch.set(ref, g);
-        });
-
-        notes.forEach(n => {
-          const ref = doc(db, 'users', user.uid, 'notes', n.id);
-          batch.set(ref, n);
-        });
-
-        tasks.forEach(t => {
-          const ref = doc(db, 'users', user.uid, 'tasks', t.id);
-          batch.set(ref, t);
-        });
-
-        await batch.commit();
-        alert('Data migrated successfully!');
-      } catch (err) {
-        console.error("Migration failed", err);
-        alert('Failed to migrate data.');
-      }
-    } else {
-      // Just fetch from Firebase (overwrite local)
-      if (user) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.currentLevel) setCurrentLevel(data.currentLevel);
-            if (data.currentXP !== undefined) setCurrentXP(data.currentXP);
-            if (data.xpHistory) setXpHistory(data.xpHistory);
-            if (data.isThemeLight !== undefined) setIsThemeLight(data.isThemeLight);
-            if (data.stats) setStats(data.stats);
-            if (data.achievements) setAchievements(data.achievements);
-          }
-
-          const routinesSnap = await getDocs(collection(db, 'users', user.uid, 'routines'));
-          if (!routinesSnap.empty) {
-            setRoutines(routinesSnap.docs.map(d => d.data() as RoutineItem));
-          }
-          
-          const goalsSnap = await getDocs(collection(db, 'users', user.uid, 'goals'));
-          if (!goalsSnap.empty) {
-            setGoals(goalsSnap.docs.map(d => d.data() as GoalItem));
-          }
-
-          const notesSnap = await getDocs(collection(db, 'users', user.uid, 'notes'));
-          if (!notesSnap.empty) {
-            setNotes(notesSnap.docs.map(d => d.data() as NoteItem));
-          }
-
-          const tasksSnap = await getDocs(collection(db, 'users', user.uid, 'tasks'));
-          if (!tasksSnap.empty) {
-            setTasks(tasksSnap.docs.map(d => d.data() as TaskItem));
-          }
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        }
-      }
-    }
-  };
-
-  // Sync state data to storage
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      routines.forEach(r => {
-        setDoc(doc(db, 'users', user.uid, 'routines', r.id), r).catch(console.error);
-      });
-    } else if (isGuest) {
-      localStorage.setItem('study_routines', JSON.stringify(routines));
-    }
-  }, [routines, user, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      goals.forEach(g => {
-        setDoc(doc(db, 'users', user.uid, 'goals', g.id), g).catch(console.error);
-      });
-    } else if (isGuest) {
-      localStorage.setItem('study_goals', JSON.stringify(goals));
-    }
-  }, [goals, user, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      notes.forEach(n => {
-        setDoc(doc(db, 'users', user.uid, 'notes', n.id), n).catch(console.error);
-      });
-    } else if (isGuest) {
-      localStorage.setItem('study_notes', JSON.stringify(notes));
-    }
-  }, [notes, user, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      tasks.forEach(t => {
-        setDoc(doc(db, 'users', user.uid, 'tasks', t.id), t).catch(console.error);
-      });
-    } else if (isGuest) {
-      localStorage.setItem('study_tasks', JSON.stringify(tasks));
-    }
-  }, [tasks, user, isGuest]);
-
-  useEffect(() => {
-    if (isGuest) {
-      localStorage.setItem('study_tracks', JSON.stringify(loadedTracks));
-    }
-  }, [loadedTracks, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      setDoc(doc(db, 'users', user.uid), { stats }, { merge: true }).catch(console.error);
-    } else if (isGuest) {
-      localStorage.setItem('study_stats', JSON.stringify(stats));
-    }
-  }, [stats, user, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      setDoc(doc(db, 'users', user.uid), { achievements }, { merge: true }).catch(console.error);
-    } else if (isGuest) {
-      localStorage.setItem('study_achievements', JSON.stringify(achievements));
-    }
-  }, [achievements, user, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      setDoc(doc(db, 'users', user.uid), { currentXP }, { merge: true }).catch(console.error);
-    } else if (isGuest) {
-      localStorage.setItem('study_xp', currentXP.toString());
-    }
-  }, [currentXP, user, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      setDoc(doc(db, 'users', user.uid), { currentLevel }, { merge: true }).catch(console.error);
-    } else if (isGuest) {
-      localStorage.setItem('study_level', currentLevel.toString());
-    }
-  }, [currentLevel, user, isGuest]);
-
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      setDoc(doc(db, 'users', user.uid), { xpHistory }, { merge: true }).catch(console.error);
-    } else if (isGuest) {
-      localStorage.setItem('study_xp_history', JSON.stringify(xpHistory));
-    }
-  }, [xpHistory, user, isGuest]);
-
   useEffect(() => {
     if (isThemeLight) {
       document.documentElement.classList.remove('dark');
     } else {
       document.documentElement.classList.add('dark');
     }
-    if (user && user.emailVerified) {
-      setDoc(doc(db, 'users', user.uid), { isThemeLight }, { merge: true }).catch(console.error);
-    } else if (isGuest) {
-      localStorage.setItem('study_theme_light', isThemeLight.toString());
-    }
-  }, [isThemeLight, user, isGuest]);
+  }, [isThemeLight]);
 
   // Clock runner ticker thread
   useEffect(() => {
@@ -457,35 +120,31 @@ export default function App() {
   // XP addition and Level coordination
   const handleAwardXP = React.useCallback((amount: number) => {
     // Record history
-    setXpHistory(prev => {
-      const today = new Date().toISOString().slice(0, 10);
-      const existing = prev.find(p => p.date === today);
-      if (existing) {
-        return prev.map(p => p.date === today ? { ...p, xp: p.xp + amount } : p);
-      } else {
-        return [...prev, { date: today, xp: amount }];
-      }
-    });
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = xpHistory.find(p => p.date === today);
+    if (existing) {
+      setXpHistory(xpHistory.map(p => p.date === today ? { ...p, xp: p.xp + amount } : p));
+    } else {
+      setXpHistory([...xpHistory, { date: today, xp: amount }]);
+    }
 
-    setCurrentXP((prevXP) => {
-      let nextXP = prevXP + amount;
-      let nextLevel = currentLevel;
-      const threshold = nextLevel * 500;
+    let nextXP = currentXP + amount;
+    let nextLevel = currentLevel;
+    const threshold = nextLevel * 500;
 
-      if (nextXP >= threshold) {
-        nextXP -= threshold;
-        nextLevel += 1;
-        setCurrentLevel(nextLevel);
-        setTimeout(() => {
-          speakVoiceAnnouncement(`Congratulations. Performance milestone crossed. You have leveled up to Level ${nextLevel}!`);
-          alert(`👑 LEVEL UP! You are now Level ${nextLevel}!`);
-        }, 100);
-      } else if (nextXP < 0) {
-        nextXP = 0;
-      }
-      return nextXP;
-    });
-  }, [currentLevel]);
+    if (nextXP >= threshold) {
+      nextXP -= threshold;
+      nextLevel += 1;
+      setCurrentLevel(nextLevel);
+      setTimeout(() => {
+        speakVoiceAnnouncement(`Congratulations. Performance milestone crossed. You have leveled up to Level ${nextLevel}!`);
+        alert(`👑 LEVEL UP! You are now Level ${nextLevel}!`);
+      }, 100);
+    } else if (nextXP < 0) {
+      nextXP = 0;
+    }
+    setCurrentXP(nextXP);
+  }, [currentLevel, currentXP, xpHistory, setXpHistory, setCurrentLevel, setCurrentXP]);
 
   // Web Audio Synthesizer: aggressive wake-up alarm chime
   const playSoundAlarmBeep = () => {
@@ -712,11 +371,11 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {!showSplash && !authLoading && !user && !isGuest && (
+      {!showSplash && !authLoading && !user && (
         <WelcomeScreen />
       )}
 
-      {!showSplash && !authLoading && user && !user.emailVerified && !isGuest && (
+      {!showSplash && !authLoading && user && !user.emailVerified && (
         <div className="fixed inset-0 z-[150] bg-black text-white flex items-center justify-center p-6">
           <div className="max-w-md w-full bg-white/10 backdrop-blur-xl p-8 rounded-3xl text-center border border-white/20">
             <Mail className="w-16 h-16 mx-auto mb-6 opacity-80" />
@@ -730,31 +389,6 @@ export default function App() {
             <button onClick={logout} className="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all active:scale-95">
               Sign Out
             </button>
-          </div>
-        </div>
-      )}
-
-      {showMigrationPrompt && (
-        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-black/10 dark:border-white/10">
-            <h2 className="text-xl font-bold mb-4 dark:text-white">Migrate Guest Data?</h2>
-            <p className="text-sm opacity-70 mb-6 dark:text-white">
-              Would you like to transfer your guest progress to this account?
-            </p>
-            <div className="flex gap-4">
-              <button 
-                onClick={() => handleMigration(true)}
-                className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black font-semibold rounded-xl"
-              >
-                Yes
-              </button>
-              <button 
-                onClick={() => handleMigration(false)}
-                className="flex-1 py-3 bg-black/5 dark:bg-white/10 dark:text-white font-semibold rounded-xl"
-              >
-                No
-              </button>
-            </div>
           </div>
         </div>
       )}

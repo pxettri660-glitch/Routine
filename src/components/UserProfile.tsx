@@ -13,8 +13,8 @@ interface UserProfileProps {
 }
 
 export default function UserProfile({ currentLevel, currentXP, stats, achievements }: UserProfileProps) {
-  const { user, isGuest, logout, updateUserProfile, setGuestMode } = useAuth();
-  const [name, setName] = useState(user?.displayName || 'Guest Student');
+  const { user, logout, updateUserProfile } = useAuth();
+  const [name, setName] = useState(user?.displayName || 'Student');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,56 +32,6 @@ export default function UserProfile({ currentLevel, currentXP, stats, achievemen
       setLoading(false);
     }
   };
-
-  if (isGuest) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-6">
-        <div className="max-w-2xl mx-auto rounded-[2rem] p-8 backdrop-blur-2xl border bg-white/[0.03] border-black/5 dark:border-white/10 shadow-xl text-center">
-          <Shield className="w-16 h-16 mx-auto mb-6 opacity-40" />
-          <h2 className="text-2xl font-bold tracking-tight mb-2">Guest Mode</h2>
-          <p className="opacity-60 text-sm mb-8">You are currently using the app as a guest. Your data is saved locally on this device.</p>
-          
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5">
-              <div className="text-2xl font-bold">{currentLevel}</div>
-              <div className="text-xs uppercase tracking-widest opacity-50 font-bold mt-1">Level</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5">
-              <div className="text-2xl font-bold">{currentXP}</div>
-              <div className="text-xs uppercase tracking-widest opacity-50 font-bold mt-1">Total XP</div>
-            </div>
-          </div>
-          
-          {stats && (
-            <div className="grid grid-cols-3 gap-2 mb-8 text-left">
-              <div className="p-3 bg-black/5 dark:bg-white/5 rounded-xl">
-                <div className="text-xs opacity-50 mb-1">Current Streak</div>
-                <div className="font-bold">{stats.currentStreak} Days</div>
-              </div>
-              <div className="p-3 bg-black/5 dark:bg-white/5 rounded-xl">
-                <div className="text-xs opacity-50 mb-1">Tasks Done</div>
-                <div className="font-bold">{stats.tasksCompleted}</div>
-              </div>
-              <div className="p-3 bg-black/5 dark:bg-white/5 rounded-xl">
-                <div className="text-xs opacity-50 mb-1">Focus Time</div>
-                <div className="font-bold">{stats.focusHours}h</div>
-              </div>
-            </div>
-          )}
-
-          <button 
-            onClick={() => {
-              localStorage.setItem('study_guest_mode_migration_pending', 'true');
-              setGuestMode(false);
-            }} 
-            className="w-full py-4 rounded-xl bg-black dark:bg-white text-white dark:text-black font-semibold shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
-          >
-            Log in to Sync Data
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
 
   if (!user) return null;
 
@@ -208,13 +158,35 @@ export default function UserProfile({ currentLevel, currentXP, stats, achievemen
           </div>
         )}
 
-        <button 
-          onClick={logout}
-          className="w-full py-4 rounded-xl bg-red-500/10 text-red-500 dark:text-red-400 font-semibold border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
-        >
-          <LogOut className="w-5 h-5" />
-          Secure Logout
-        </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button 
+              onClick={logout}
+              className="flex-1 py-4 rounded-xl bg-black/5 dark:bg-white/5 text-black dark:text-white font-semibold border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+            >
+              <LogOut className="w-5 h-5" />
+              Secure Logout
+            </button>
+            <button 
+              onClick={async () => {
+                if (window.confirm("Are you sure you want to completely delete your account? This action cannot be undone and all data will be permanently lost.")) {
+                  try {
+                    await user.delete();
+                    alert("Account deleted.");
+                  } catch (e: any) {
+                    if (e.code === 'auth/requires-recent-login') {
+                      alert("Please log out and log back in to delete your account for security purposes.");
+                    } else {
+                      alert("Failed to delete account: " + e.message);
+                    }
+                  }
+                }
+              }}
+              className="flex-1 py-4 rounded-xl bg-red-500/10 text-red-500 dark:text-red-400 font-semibold border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-5 h-5" />
+              Delete Account
+            </button>
+          </div>
 
       </div>
     </motion.div>
