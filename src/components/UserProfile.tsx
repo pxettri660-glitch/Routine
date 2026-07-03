@@ -13,7 +13,8 @@ interface UserProfileProps {
 }
 
 export default function UserProfile({ currentLevel, currentXP, stats, achievements }: UserProfileProps) {
-  const { user, logout, updateUserProfile } = useAuth();
+  const { user, logout, updateUserProfile, deleteAccount } = useAuth();
+  const [showLegal, setShowLegal] = useState<'none' | 'privacy' | 'terms' | 'about'>('none');
   const [name, setName] = useState(user?.displayName || 'Student');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [editing, setEditing] = useState(false);

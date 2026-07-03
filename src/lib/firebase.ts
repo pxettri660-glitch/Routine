@@ -27,13 +27,7 @@ if (typeof window !== "undefined") {
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
-try {
-  enableIndexedDbPersistence(db).catch((err) => {
-    console.warn("Firestore offline persistence not enabled:", err.code);
-  });
-} catch (e) {
-  console.warn("Firestore offline persistence error:", e);
-}
+// Removed offline persistence for iframe compatibility
 
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 

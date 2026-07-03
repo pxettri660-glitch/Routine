@@ -21,7 +21,9 @@ import {
   Timer,
   Flame,
   User,
-  Mail
+  Mail,
+  MessageCircle,
+  Shield
 } from 'lucide-react';
 
 import { RoutineItem, GoalItem, NoteItem, AudioTrack, XPHistory, TaskItem, UserStats, Achievement } from './types';
@@ -38,7 +40,12 @@ import Entertainment from './components/Entertainment';
 import Focus from './components/Focus';
 import WelcomeScreen from './components/WelcomeScreen';
 import UserProfile from './components/UserProfile';
+import CommunityChat from './components/CommunityChat';
+import AdminPanel from './components/AdminPanel';
 import { useAuth } from './contexts/AuthContext';
+import { requestNotificationPermissions } from './lib/notifications';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { Capacitor } from '@capacitor/core';
 import { db } from './lib/firebase';
 import { doc, getDoc, writeBatch } from 'firebase/firestore';
 
@@ -100,6 +107,18 @@ export default function App() {
     }, 2500);
     return () => clearTimeout(splashTimer);
   }, []);
+
+
+  useEffect(() => {
+    requestNotificationPermissions().catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      SplashScreen.hide().catch(console.error);
+    }
+  }, []);
+
 
   useEffect(() => {
     if (isThemeLight) {
@@ -375,25 +394,17 @@ export default function App() {
         <WelcomeScreen />
       )}
 
-      {!showSplash && !authLoading && user && !user.emailVerified && (
-        <div className="fixed inset-0 z-[150] bg-black text-white flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white/10 backdrop-blur-xl p-8 rounded-3xl text-center border border-white/20">
-            <Mail className="w-16 h-16 mx-auto mb-6 opacity-80" />
-            <h2 className="text-3xl font-bold mb-4">Verify Your Email</h2>
-            <p className="opacity-70 mb-8 text-sm">
-              We've sent a verification link to {user.email}. Please check your inbox and verify your email to access the engine.
-            </p>
-            <button onClick={() => window.location.reload()} className="w-full py-4 bg-white text-black font-bold rounded-xl mb-4 transition-transform active:scale-95">
-              I have verified
-            </button>
-            <button onClick={logout} className="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all active:scale-95">
-              Sign Out
-            </button>
-          </div>
-        </div>
-      )}
+      
 
+      {!showSplash && !authLoading && user && (
       <div className={`min-h-[100dvh] flex flex-col transition-all duration-300 ${getJarvisThemeClass()} bg-transparent`}>
+        {!user.emailVerified && (
+          <div className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2 z-50 relative">
+            <Mail className="w-4 h-4" />
+            Please verify your email address ({user.email}). 
+            <button onClick={() => window.location.reload()} className="underline font-bold ml-2">Refresh</button>
+          </div>
+        )}
       
       {/* Background Ambient Layers */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -521,6 +532,12 @@ export default function App() {
                   {currentView === 'tasks' && (
                     <Tasks tasks={tasks} onUpdateTasks={setTasks} onAwardXP={handleAwardXP} />
                   )}
+                  {currentView === 'chat' && (
+                    <CommunityChat />
+                  )}
+                  {currentView === 'admin' && (
+                    <AdminPanel />
+                  )}
                 </motion.div>
               </AnimatePresence>
             </section>
@@ -543,8 +560,8 @@ export default function App() {
 
       {/* Floating Premium Bottom Navigation */}
       {currentView !== 'jarvis' && (
-        <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto flex items-center justify-between gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border bg-white/70 dark:bg-[#18181b]/80 border-black/5 dark:border-white/10 shadow-black/5 dark:shadow-black/50 transition-colors duration-300 w-full max-w-fit overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-2 sm:px-4 pointer-events-none w-full">
+          <div className="pointer-events-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border bg-white/70 dark:bg-[#18181b]/80 border-black/5 dark:border-white/10 shadow-black/5 dark:shadow-black/50 transition-colors duration-300 max-w-full overflow-x-auto no-scrollbar">
             {[
               { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
               { id: 'routine', icon: Sliders, label: 'Routine' },
@@ -585,9 +602,11 @@ export default function App() {
             {[
               { id: 'goals', icon: Target, label: 'Goals' },
               { id: 'tasks', icon: FileText, label: 'Tasks' },
+              { id: 'chat', icon: MessageCircle, label: 'Community' },
               { id: 'music', icon: Music, label: 'Music' },
               { id: 'tools', icon: Settings, label: 'Settings' }, 
               { id: 'profile', icon: User, label: 'Profile' },
+              { id: 'admin', icon: Shield, label: 'Admin' },
             ].map((item) => {
               const isSelected = currentView === item.id;
               const Icon = item.icon;
@@ -616,6 +635,7 @@ export default function App() {
         </div>
       )}
     </div>
+    )}
     </>
   );
 }

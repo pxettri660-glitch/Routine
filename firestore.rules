@@ -1,19 +1,80 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only allow users to access their own complete data tree
+    
+    function isSuperAdmin() {
+      return request.auth != null && (request.auth.uid == 'gwvcfcQqpKgFf8oR6OruOmYm1s82' || request.auth.uid == 'QDkkZtRwlDcdALtsFWEg9HAcgAC2');
+    }
+    
+    function getRole() {
+      return exists(/databases/$(database)/documents/roles/$(request.auth.uid)) 
+        ? get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role 
+        : 'user';
+    }
+
+    function isModerator() {
+      return request.auth != null && (isSuperAdmin() || getRole() == 'moderator' || getRole() == 'super_admin');
+    }
+    
+    function isBanned() {
+      return exists(/databases/$(database)/documents/banned_users/$(request.auth.uid));
+    }
+    
+    function isMuted() {
+      return exists(/databases/$(database)/documents/muted_users/$(request.auth.uid));
+    }
+
     match /users/{userId} {
-      // User can read/write their base document
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow read for super_admin (to view all users), or the user themselves
+      allow read: if request.auth != null && (request.auth.uid == userId || isSuperAdmin() || isModerator());
+      allow write: if request.auth != null && request.auth.uid == userId;
       
-      // User can read/write any subcollection inside their document
       match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isSuperAdmin() || isModerator());
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
     }
     
-    // Deny all other access by default
+    match /community_messages/{messageId} {
+      allow read: if request.auth != null && !isBanned();
+      allow create: if request.auth != null 
+                    && request.resource.data.senderId == request.auth.uid
+                    && !isMuted()
+                    && !isBanned();
+      
+      allow update, delete: if request.auth != null && !isBanned() && (
+        request.auth.uid == resource.data.senderId 
+        || isSuperAdmin()
+        || isModerator()
+      );
+    }
+
+    match /roles/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin(); 
+    }
+
+    match /muted_users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isModerator() || isSuperAdmin();
+    }
+    
+    match /banned_users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
+    }
+    
+    match /reports/{reportId} {
+      allow read: if isModerator() || isSuperAdmin();
+      allow create: if request.auth != null && !isBanned();
+      allow update, delete: if isModerator() || isSuperAdmin();
+    }
+    
+    match /announcements/{announcementId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

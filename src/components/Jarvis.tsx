@@ -30,7 +30,8 @@ export default function Jarvis({
   selectedTheme = 'cyan', 
   onChangeTheme,
   isThemeLight = false,
-  onToggleLightDarkTheme
+  onToggleLightDarkTheme,
+  onNavigate
 }: JarvisProps) {
   const [messages, setMessages] = useFirestoreCollection<ChatMessage>('chat_messages', []);
   
@@ -184,7 +185,6 @@ export default function Jarvis({
           />
         )}
       </AnimatePresence>
-
       {/* Modern Glassmorphism Sidebar */}
       <div className={`
         fixed md:static inset-y-0 left-0 z-40 transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
@@ -214,54 +214,35 @@ export default function Jarvis({
             onClick={() => { setMessages([]); setIsSidebarOpen(false); }}
             className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium text-sm border shadow-sm group
               ${isDark 
-                ? 'bg-white/[0.05] hover:bg-white/[0.1] border-white/10 text-white' 
-                : 'bg-black/[0.03] hover:bg-black/[0.06] border-black/5 text-black'
-              }
+                ? 'bg-white/10 hover:bg-white/20 border-white/10 text-white' 
+                : 'bg-black text-white hover:bg-gray-800 border-transparent'}
             `}
           >
-            <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" /> New chat
+            <Plus className="w-4 h-4 transition-transform group-hover:rotate-90 duration-300" />
+            New Session
           </button>
         </div>
 
-        {/* Chat History List */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-1 no-scrollbar pb-4">
-          <div className={`text-[10px] font-bold uppercase tracking-widest px-3 py-4 ${isDark ? 'text-white/40' : 'text-black/40'}`}>
-            Today
-          </div>
-          {messages.length > 0 && (
-             <button className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm text-left shadow-sm border
-               ${isDark ? 'bg-white/10 text-white border-white/5' : 'bg-white text-black border-black/5 shadow-sm'}
-             `}>
-             <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-br ${activeGradient}`}></div>
-             <span className="truncate flex-1 font-medium">Current conversation</span>
+        {/* Action Buttons */}
+        <div className="flex-1 overflow-y-auto px-4 space-y-1">
+           <button onClick={() => setAiMode('general')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${aiMode === 'general' ? (isDark ? 'bg-white/10 text-white font-medium' : 'bg-black/5 text-black font-medium') : (isDark ? 'text-white/70 hover:bg-white/5' : 'text-black/70 hover:bg-black/5')}`}>
+             <Globe className="w-4 h-4" /> General AI
            </button>
-          )}
-          <button className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm text-left group
-             ${isDark ? 'hover:bg-white/5 text-white/70' : 'hover:bg-black/5 text-black/70'}
-          `}>
-             <History className="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
-             <span className="truncate flex-1">Understanding React Hooks</span>
-          </button>
-          <button className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm text-left group
-             ${isDark ? 'hover:bg-white/5 text-white/70' : 'hover:bg-black/5 text-black/70'}
-          `}>
-             <History className="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
-             <span className="truncate flex-1">Quantum Physics Essay</span>
-          </button>
+           <button onClick={() => setAiMode('study')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${aiMode === 'study' ? (isDark ? 'bg-white/10 text-white font-medium' : 'bg-black/5 text-black font-medium') : (isDark ? 'text-white/70 hover:bg-white/5' : 'text-black/70 hover:bg-black/5')}`}>
+             <Sparkles className="w-4 h-4" /> Study Tutor
+           </button>
+           <button onClick={() => setAiMode('coding')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${aiMode === 'coding' ? (isDark ? 'bg-white/10 text-white font-medium' : 'bg-black/5 text-black font-medium') : (isDark ? 'text-white/70 hover:bg-white/5' : 'text-black/70 hover:bg-black/5')}`}>
+             <Code className="w-4 h-4" /> Code Copilot
+           </button>
         </div>
 
         {/* Sidebar Footer */}
-        <div className={`p-4 border-t space-y-1 ${isDark ? 'border-white/[0.05]' : 'border-black/[0.05]'}`}>
-          <button onClick={exportChat} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium ${isDark ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'}`}>
-            <Download className="w-4 h-4 shrink-0 opacity-70" /> Export Data
+        <div className={`p-4 border-t space-y-2 ${isDark ? 'border-white/[0.05]' : 'border-black/[0.05]'}`}>
+          <button onClick={exportChat} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${isDark ? 'text-white/70 hover:bg-white/5 hover:text-white' : 'text-black/70 hover:bg-black/5 hover:text-black'}`}>
+             <Download className="w-4 h-4" /> Export Log
           </button>
-          {onToggleLightDarkTheme && (
-             <button onClick={onToggleLightDarkTheme} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium ${isDark ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'}`}>
-             <Monitor className="w-4 h-4 shrink-0 opacity-70" /> Toggle Theme
-           </button>
-          )}
-          <button className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium ${isDark ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'}`}>
-            <Settings className="w-4 h-4 shrink-0 opacity-70" /> Settings
+          <button onClick={() => {}} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${isDark ? 'text-white/70 hover:bg-white/5 hover:text-white' : 'text-black/70 hover:bg-black/5 hover:text-black'}`}>
+             <History className="w-4 h-4" /> History
           </button>
         </div>
       </div>
@@ -339,8 +320,14 @@ export default function Jarvis({
               </AnimatePresence>
             </div>
           </div>
-          
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate && onNavigate('dashboard')}
+              className={`p-2 rounded-full transition-colors flex items-center justify-center ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+              title="Close Assistant"
+            >
+              <X className="w-5 h-5" />
+            </button>
             <div className={`h-8 w-8 rounded-full flex items-center justify-center border shadow-sm cursor-pointer
               ${isDark ? 'bg-white/[0.05] border-white/10 hover:bg-white/10' : 'bg-white border-black/10 hover:bg-slate-50'}
             `}>

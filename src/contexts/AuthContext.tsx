@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut, updateProfile, deleteUser } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { DEFAULT_STATS, DEFAULT_ACHIEVEMENTS } from '../lib/defaults';
@@ -9,13 +9,15 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   logout: async () => {},
-  updateUserProfile: async () => {}
+  updateUserProfile: async () => {},
+  deleteAccount: async () => {}
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -72,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               await setDoc(profileRef, { lastLogin: serverTimestamp() }, { merge: true });
             }
           } catch (e: any) {
-            if (e.code === 'unavailable') {
+            if (e.code === 'unavailable' || e.message?.includes('offline')) {
               console.warn("Client is offline, skipping profile sync.");
             } else {
               console.error("Profile sync error:", e);
@@ -99,6 +101,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+
+  const deleteAccount = async () => {
+    if (auth.currentUser) {
+      try {
+        await deleteUser(auth.currentUser);
+      } catch (e) {
+        console.error("Delete account error:", e);
+        throw e;
+      }
+    }
+  };
+
   const updateUserProfile = async (displayName: string, photoURL?: string) => {
     if (auth.currentUser) {
       try {
@@ -115,7 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, loading, logout, updateUserProfile, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );
