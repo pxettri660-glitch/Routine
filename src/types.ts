@@ -5,6 +5,10 @@ export interface RoutineItem {
   title: string;
   desc: string;
   isCompleted?: boolean;
+  repeatDays?: number[]; // 0=Sun, 1=Mon, etc.
+  category?: string;
+  reminder?: boolean;
+  order?: number;
 }
 
 export interface GoalItem {
@@ -55,6 +59,16 @@ export interface Achievement {
   unlockedAt?: string;
   isUnlocked: boolean;
   xpReward: number;
+}
+
+export interface FocusSession {
+  id: string;
+  startTime: number;
+  endTime: number;
+  duration: number; // in seconds
+  date: string;
+  category: string;
+  deviceTimestamp: number;
 }
 
 export interface UserStats {

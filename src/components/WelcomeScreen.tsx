@@ -106,14 +106,13 @@ export default function WelcomeScreen() {
 
   return (
     <div className="fixed inset-0 bg-[#0a0a0a] flex items-center justify-center p-6 z-50 overflow-hidden font-sans text-white">
-      {/* Premium Glassmorphic Background Effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-600/20 blur-[120px] mix-blend-screen" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-purple-600/20 blur-[120px] mix-blend-screen" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] rounded-full bg-indigo-500/5 blur-[150px] mix-blend-screen" />
-        
-        {/* Animated grid overlay */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+      {/* Hero Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-top bg-no-repeat pointer-events-none" 
+        style={{ backgroundImage: "url('/file_00000000e4ac71f8852031dc37195c7d.png')" }}
+      >
+        {/* Soft Dark Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-[#0a0a0a]/60 to-[#0a0a0a] z-0"></div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -124,44 +123,34 @@ export default function WelcomeScreen() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -30, scale: 0.95 }}
             transition={{ duration: 0.5, type: 'spring', bounce: 0.4 }}
-            className="relative z-10 max-w-md w-full"
+            className="relative z-10 max-w-md w-full flex flex-col justify-end h-full pb-8 pt-12"
           >
-            <div className="text-center mb-10">
-              <motion.div 
-                initial={{ rotate: -10, scale: 0.8 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ duration: 0.7, type: 'spring' }}
-                className="w-24 h-24 rounded-3xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 backdrop-blur-2xl flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.1)] mx-auto mb-8 relative group"
-              >
-                <div className="absolute inset-0 bg-white/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
-                <Zap className="w-12 h-12 text-white relative z-10" />
-              </motion.div>
-              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/60">
-                Student Engine
-              </h1>
-              <p className="text-white/50 text-lg font-medium tracking-wide">
-                Your Unified Production Cockpit.
-              </p>
-            </div>
+            <div className="mt-auto flex flex-col gap-6">
+              <div className="text-center bg-black/20 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-2xl">
+                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">
+                  Welcome to Student Engine
+                </h1>
+                <p className="text-white/70 text-base sm:text-lg font-medium tracking-wide">
+                  Build better habits. Stay focused. Achieve your goals.
+                </p>
+                
+                <div className="mt-8 space-y-4 w-full">
+                  <button 
+                    onClick={() => setView('signup')}
+                    className="w-full py-4 px-6 rounded-full bg-blue-600 text-white font-bold text-lg hover:bg-blue-500 active:scale-[0.98] transition-all shadow-[0_4px_20px_rgba(37,99,235,0.4)] flex items-center justify-center gap-3 group"
+                  >
+                    Get Started
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
 
-            <div className="space-y-4">
-              <button 
-                onClick={() => setView('signup')}
-                className="w-full py-4 px-6 rounded-2xl bg-white text-black font-bold text-lg hover:bg-neutral-200 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center justify-center gap-3 group"
-              >
-                Get Started
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button 
-                onClick={() => setView('login')}
-                className="w-full py-4 px-6 rounded-2xl bg-white/5 text-white border border-white/10 font-bold text-lg hover:bg-white/10 active:scale-[0.98] transition-all backdrop-blur-xl flex items-center justify-center"
-              >
-                Sign In
-              </button>
-
-              <div className="relative py-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10"></div>
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-white/70">
+                      Already have an account?{' '}
+                      <button onClick={() => { setView('login'); setError(''); setMsg(''); }} className="text-blue-400 font-bold hover:text-blue-300 transition-colors">
+                        Sign In
+                      </button>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

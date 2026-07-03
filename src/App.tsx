@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 import { RoutineItem, GoalItem, NoteItem, AudioTrack, XPHistory, TaskItem, UserStats, Achievement } from './types';
-import { DEFAULT_ROUTINES, DEFAULT_GOALS, DEFAULT_NOTES, DEFAULT_STATS, DEFAULT_ACHIEVEMENTS } from './lib/defaults';
+import { DEFAULT_STATS, DEFAULT_ACHIEVEMENTS } from './lib/defaults';
 import { useFirestoreCollection, useFirestoreDocument } from './hooks/useFirestoreSync';
 import Dashboard from './components/Dashboard';
 import Routine from './components/Routine';
@@ -68,9 +68,9 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Firestore Synced States
-  const [routines, setRoutines] = useFirestoreCollection<RoutineItem>('routines', DEFAULT_ROUTINES);
-  const [goals, setGoals] = useFirestoreCollection<GoalItem>('goals', DEFAULT_GOALS);
-  const [notes, setNotes] = useFirestoreCollection<NoteItem>('notes', DEFAULT_NOTES);
+  const [routines, setRoutines] = useFirestoreCollection<RoutineItem>('routines', []);
+  const [goals, setGoals] = useFirestoreCollection<GoalItem>('goals', []);
+  const [notes, setNotes] = useFirestoreCollection<NoteItem>('notes', []);
   const [tasks, setTasks] = useFirestoreCollection<TaskItem>('tasks', []);
   const [loadedTracks, setLoadedTracks] = useFirestoreCollection<AudioTrack>('tracks', []);
   
@@ -325,7 +325,7 @@ export default function App() {
   };
 
   const loadDemoSequences = React.useCallback(() => {
-    setRoutines(DEFAULT_ROUTINES);
+    // No-op
   }, []);
 
   // Select tone styling based on current Jarvis settings

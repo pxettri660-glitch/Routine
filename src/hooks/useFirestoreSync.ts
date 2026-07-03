@@ -13,10 +13,8 @@ export function useFirestoreCollection<T extends { id: string }>(
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(collection(db, 'users', user.uid, collectionName), (snap) => {
-      if (!snap.metadata.hasPendingWrites) {
-        const items = snap.docs.map(d => d.data() as T);
-        setData(items);
-      }
+      const items = snap.docs.map(d => d.data() as T);
+      setData(items);
     });
     return () => unsub();
   }, [user, collectionName, initialData]);
@@ -60,7 +58,7 @@ export function useFirestoreDocument<T>(
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(doc(db, documentPath.replace('{uid}', user.uid)), (snap) => {
-      if (snap.exists() && !snap.metadata.hasPendingWrites) {
+      if (snap.exists()) {
         const docData = snap.data();
         if (docData && docData[key] !== undefined) {
           setData(docData[key]);

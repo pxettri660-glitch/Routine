@@ -1,0 +1,23 @@
+--- src/components/Focus.tsx
++++ src/components/Focus.tsx
+@@ -2,15 +2,16 @@
+ import { Play, Pause, Square, Trophy, Target, TrendingUp, Award, Zap, Flame, RotateCcw } from 'lucide-react';
+ import { motion } from 'motion/react';
++import { useFirestoreCollection } from '../hooks/useFirestoreSync';
++import { FocusSession } from '../types';
+ 
+ const Focus = React.memo(function Focus({ onAwardXP }: { onAwardXP?: (amount: number) => void }) {
+   const [mode, setMode] = useState<'pomodoro' | 'stopwatch'>('pomodoro');
+   const [timeLeft, setTimeLeft] = useState(25 * 60);
+   const [isActive, setIsActive] = useState(false);
+-  const [sessionCount, setSessionCount] = useState(0);
+-
+-  // Stats
+-  const [streak, setStreak] = useState(3);
+-  const [focusScore, setFocusScore] = useState(85);
+-  const [totalFocusTime, setTotalFocusTime] = useState(120);
++  const [startTime, setStartTime] = useState<number | null>(null);
++  
++  const [focusSessions, setFocusSessions] = useFirestoreCollection<FocusSession>('focusSessions', []);
+ 
+   const [isFullscreen, setIsFullscreen] = useState(false);

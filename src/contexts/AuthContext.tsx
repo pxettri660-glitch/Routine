@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { DEFAULT_ROUTINES, DEFAULT_GOALS, DEFAULT_NOTES, DEFAULT_STATS, DEFAULT_ACHIEVEMENTS } from '../lib/defaults';
+import { DEFAULT_STATS, DEFAULT_ACHIEVEMENTS } from '../lib/defaults';
 
 interface AuthContextType {
   user: User | null;
@@ -64,17 +64,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 jarvisTheme: 'cyan',
                 alarmTime: '04:45',
                 isAlarmEnabled: true
-              });
-
-              // Seed collections
-              DEFAULT_ROUTINES.forEach(r => {
-                batch.set(doc(db, 'users', currentUser.uid, 'routines', r.id), r);
-              });
-              DEFAULT_GOALS.forEach(g => {
-                batch.set(doc(db, 'users', currentUser.uid, 'goals', g.id), g);
-              });
-              DEFAULT_NOTES.forEach(n => {
-                batch.set(doc(db, 'users', currentUser.uid, 'notes', n.id), n);
               });
 
               await batch.commit();

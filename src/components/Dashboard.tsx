@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Bell, CheckSquare, Award, Play, Pause, RotateCcw, Volume2, Sparkles, Flame, ChevronRight, Activity, CalendarDays, Zap, Coffee, Target } from 'lucide-react';
-import { RoutineItem, GoalItem, XPHistory } from '../types';
+import { RoutineItem, GoalItem, XPHistory, FocusSession } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useFirestoreCollection } from '../hooks/useFirestoreSync';
 
 interface DashboardProps {
   currentTime: Date;
@@ -44,6 +45,8 @@ const Dashboard = React.memo(function Dashboard({
   const [pomoIsActive, setPomoIsActive] = useState(false);
   const pomoTimerRef = useRef<number | null>(null);
 
+  const [focusSessions, setFocusSessions] = useFirestoreCollection<FocusSession>('focusSessions', []);
+
   // Run Pomodoro countdown ticker
   useEffect(() => {
     if (pomoIsActive) {
@@ -54,6 +57,17 @@ const Dashboard = React.memo(function Dashboard({
             if (pomoTimerRef.current) clearInterval(pomoTimerRef.current);
             setTimeout(() => {
               onAwardXP(250);
+              const now = Date.now();
+              const newSession: FocusSession = {
+                id: now.toString(),
+                startTime: now - (25 * 60 * 1000), // Approximate 25 mins ago
+                endTime: now,
+                duration: 25 * 60,
+                date: new Date().toISOString().split('T')[0],
+                category: 'Pomodoro',
+                deviceTimestamp: now,
+              };
+              setFocusSessions([...focusSessions, newSession]);
             }, 100);
             return 1500;
           }
