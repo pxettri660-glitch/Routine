@@ -4,6 +4,7 @@ import { Calendar, Plus, Trash2, Edit2, RotateCcw, Activity, CalendarDays, Clock
 import { RoutineItem } from '../types';
 
 interface RoutineProps {
+  startCreating?: boolean;
   routines: RoutineItem[];
   currentTask: RoutineItem | null;
   onUpdateRoutines: (newRoutines: RoutineItem[]) => void;
@@ -15,11 +16,16 @@ const Routine = React.memo(function Routine({
   currentTask,
   onUpdateRoutines,
   onResetToDefault,
+  startCreating = false,
 }: RoutineProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<RoutineItem>>({});
 
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(startCreating);
+
+  React.useEffect(() => {
+    if (startCreating) setIsCreating(true);
+  }, [startCreating]);
   const [newForm, setNewForm] = useState<Partial<RoutineItem>>({
     title: '', start: '12:00', end: '13:00', desc: '', category: 'Work', reminder: false, repeatDays: [1,2,3,4,5]
   });

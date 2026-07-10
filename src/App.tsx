@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
+import { Plus, Activity, Grid,
   LayoutDashboard,
   Calendar as CalendarIcon,
   Target,
@@ -42,6 +42,12 @@ import WelcomeScreen from './components/WelcomeScreen';
 import UserProfile from './components/UserProfile';
 import CommunityChat from './components/CommunityChat';
 import AdminPanel from './components/AdminPanel';
+import More from './components/More';
+import StudyNav from './components/StudyNav';
+import AINav from './components/AINav';
+import CommunityNav from './components/CommunityNav';
+import ProfileNav from './components/ProfileNav';
+import { BookOpen, Users } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import { requestNotificationPermissions } from './lib/notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
@@ -51,16 +57,37 @@ import { doc, getDoc, writeBatch } from 'firebase/firestore';
 
 export default function App() {
   const { user, loading: authLoading, logout } = useAuth();
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
   const [currentView, setCurrentView] = useState<string>(() => {
     const hash = window.location.hash.replace('#', '');
     return hash || 'dashboard';
   });
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  const handleScroll = React.useCallback((e: React.UIEvent<HTMLElement>) => {
+    const target = e.currentTarget;
+    if (!target || !target.scrollTop) return;
+    const currentScrollY = target.scrollTop;
+    if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+      setIsNavVisible(false);
+    } else {
+      setIsNavVisible(true);
+    }
+    lastScrollY.current = currentScrollY;
+  }, []);
 
   const handleNavigate = React.useCallback((view: string) => {
     setCurrentView(view);
     window.location.hash = view;
   }, []);
+
+  const handleHapticNavigate = React.useCallback((view: string) => {
+    if (window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate(50);
+    }
+    handleNavigate(view);
+  }, [handleNavigate]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -358,7 +385,7 @@ export default function App() {
   return (
     <>
       <AnimatePresence>
-        {showSplash && (
+        {(showSplash || authLoading) && (
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, filter: 'blur(20px)' }}
@@ -397,7 +424,7 @@ export default function App() {
       
 
       {!showSplash && !authLoading && user && (
-      <div className={`min-h-[100dvh] flex flex-col transition-all duration-300 ${getJarvisThemeClass()} bg-transparent`}>
+      <div className={`min-h-screen min-h-screen h-[100dvh] flex flex-col transition-all duration-300 ${getJarvisThemeClass()} bg-transparent`}>
         {!user.emailVerified && (
           <div className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2 z-50 relative">
             <Mail className="w-4 h-4" />
@@ -417,7 +444,7 @@ export default function App() {
         <div className={`absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] ${isThemeLight ? 'opacity-10 mix-blend-multiply' : 'opacity-20 brightness-100 contrast-150 mix-blend-overlay'}`}></div>
       </div>
 
-      <main className={`flex-1 flex flex-col min-w-0 relative z-10 ${currentView !== 'jarvis' ? 'h-[100dvh] overflow-y-auto overflow-x-hidden' : ''}`}>
+      <main id="main-scroll-container" onScroll={handleScroll} className={`flex-1 flex flex-col min-w-0 relative z-10 ${currentView !== 'jarvis' ? 'h-screen h-[100dvh] overflow-y-auto overflow-x-hidden' : ''}`}>
         
         {currentView !== 'jarvis' && (
           <>
@@ -479,7 +506,7 @@ export default function App() {
                     />
                   )}
 
-                  {currentView === 'routine' && (
+                  {['routine', 'add-routine'].includes(currentView) && (
                     <Routine
                       routines={routines}
                       currentTask={activeTask}
@@ -538,6 +565,21 @@ export default function App() {
                   {currentView === 'admin' && (
                     <AdminPanel />
                   )}
+                  {currentView === 'more' && (
+                    <More onNavigate={handleNavigate} />
+                  )}
+                  {currentView === 'study_nav' && (
+                    <StudyNav onNavigate={handleNavigate} />
+                  )}
+                  {currentView === 'ai_nav' && (
+                    <AINav onNavigate={handleNavigate} />
+                  )}
+                  {currentView === 'community_nav' && (
+                    <CommunityNav onNavigate={handleNavigate} />
+                  )}
+                  {currentView === 'profile_nav' && (
+                    <ProfileNav onNavigate={handleNavigate} isThemeLight={isThemeLight} onToggleTheme={() => setIsThemeLight(!isThemeLight)} />
+                  )}
                 </motion.div>
               </AnimatePresence>
             </section>
@@ -545,7 +587,7 @@ export default function App() {
         )}
 
         {currentView === 'jarvis' && (
-          <div className="flex-1 w-full h-[100dvh]">
+          <div className="flex-1 w-full h-screen h-[100dvh]">
             <Jarvis
               onNavigate={handleNavigate}
               selectedTheme={jarvisTheme}
@@ -558,76 +600,90 @@ export default function App() {
 
       </main>
 
-      {/* Floating Premium Bottom Navigation */}
+      {/* Premium Floating Bottom Navigation (Material Design 3) */}
       {currentView !== 'jarvis' && (
-        <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-2 sm:px-4 pointer-events-none w-full">
-          <div className="pointer-events-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-2 px-3 py-2 rounded-[2rem] shadow-2xl backdrop-blur-2xl border bg-white/70 dark:bg-[#18181b]/80 border-black/5 dark:border-white/10 shadow-black/5 dark:shadow-black/50 transition-colors duration-300 max-w-full overflow-x-auto no-scrollbar">
+        <div className={`fixed bottom-0 sm:bottom-8 left-0 right-0 z-50 flex justify-center w-full pointer-events-none transition-transform duration-500 translate-y-0 px-4 pb-6 sm:pb-0 pt-16 bg-gradient-to-t from-white/90 via-white/50 to-transparent dark:from-[#0a0a0a]/90 dark:via-[#0a0a0a]/50 backdrop-blur-[2px]`}>
+          <div className="pointer-events-auto flex items-center justify-between sm:justify-center gap-2 sm:gap-8 px-4 py-3 rounded-[2rem] shadow-[0_8px_32px_-4px_rgba(0,0,0,0.1),_0_4px_16px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_32px_-4px_rgba(0,0,0,0.5),_0_4px_16px_-4px_rgba(0,0,0,0.3)] backdrop-blur-3xl border bg-white/80 dark:bg-[#1a1a1a]/80 border-white/50 dark:border-white/10 w-full sm:w-auto max-w-lg transition-all duration-300">
             {[
               { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
-              { id: 'routine', icon: Sliders, label: 'Routine' },
-              { id: 'focus', icon: Timer, label: 'Focus' },
+              { id: 'study_nav', icon: BookOpen, label: 'Study' }
             ].map((item) => {
               const isSelected = currentView === item.id;
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavigate(item.id)}
-                  className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
+                  onClick={() => handleHapticNavigate(item.id)}
+                  className={`relative flex-1 sm:flex-none flex flex-col items-center justify-center gap-1.5 transition-all duration-500 group outline-none ${
                     isSelected
-                      ? 'text-black dark:text-white'
-                      : 'text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : 'text-black/50 dark:text-white/50 hover:text-indigo-600/80 dark:hover:text-indigo-400/80'
                   }`}
                 >
-                  {isSelected && (
-                    <motion.div 
-                      layoutId="bottom-nav-indicator"
-                      className="absolute inset-0 rounded-full z-0 bg-black/5 dark:bg-white/10 transition-colors duration-300"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 relative z-10 transition-transform duration-300 group-hover:scale-110" strokeWidth={isSelected ? 2.5 : 2} />
+                  <div className="relative px-6 py-2 rounded-full flex items-center justify-center transition-colors">
+                    {isSelected && (
+                      <motion.div 
+                        layoutId="nav-pill"
+                        className="absolute inset-0 rounded-full bg-indigo-50 dark:bg-indigo-500/15 shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_3px_rgba(255,255,255,0.05)]"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <Icon className="w-6 h-6 relative z-10 transition-transform duration-300 group-hover:scale-110 group-active:scale-95" strokeWidth={isSelected ? 2.5 : 2} />
+                  </div>
+                  <span className={`text-[11px] font-bold tracking-wide transition-all duration-300 ${isSelected ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 h-0 overflow-hidden'}`}>
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
             
-            {/* FAB Middle Button */}
-            <button
-              onClick={() => handleNavigate('jarvis')}
-              className="relative mx-1 sm:mx-2 p-4 sm:p-5 rounded-full flex items-center justify-center transition-all duration-500 group shadow-lg bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 hover:-translate-y-1"
-            >
-              <Bot className="w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-300 group-hover:scale-110" strokeWidth={2.5} />
-            </button>
+            {/* Center FAB (AI) */}
+            <div className="relative -top-8 sm:-top-10 flex justify-center shrink-0">
+              <button
+                onClick={() => handleHapticNavigate('ai_nav')}
+                className={`group relative p-4 rounded-full flex items-center justify-center transition-all duration-500 outline-none
+                  ${currentView === 'ai_nav' ? 'shadow-[0_16px_32px_-8px_rgba(99,102,241,0.8)] scale-105' : 'shadow-[0_12px_24px_-8px_rgba(99,102,241,0.5)] dark:shadow-[0_12px_24px_-8px_rgba(99,102,241,0.4)]'}
+                  bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:via-indigo-400 hover:to-cyan-400 text-white
+                  hover:-translate-y-1.5 hover:scale-105 hover:shadow-[0_16px_32px_-8px_rgba(99,102,241,0.6)]
+                  active:scale-95 active:translate-y-0`}
+              >
+                <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity blur-md" />
+                <Bot className="w-8 h-8 relative z-10 transition-transform duration-300 group-hover:scale-110" strokeWidth={2.5} />
+                
+                {/* Glow effect */}
+                <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            </div>
 
             {[
-              { id: 'goals', icon: Target, label: 'Goals' },
-              { id: 'tasks', icon: FileText, label: 'Tasks' },
-              { id: 'chat', icon: MessageCircle, label: 'Community' },
-              { id: 'music', icon: Music, label: 'Music' },
-              { id: 'tools', icon: Settings, label: 'Settings' }, 
-              { id: 'profile', icon: User, label: 'Profile' },
-              { id: 'admin', icon: Shield, label: 'Admin' },
+              { id: 'community_nav', icon: Users, label: 'Community' },
+              { id: 'profile_nav', icon: User, label: 'Profile' }
             ].map((item) => {
               const isSelected = currentView === item.id;
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavigate(item.id)}
-                  className={`relative p-2.5 sm:px-4 sm:py-3 rounded-full flex items-center justify-center transition-all duration-500 group overflow-hidden ${
+                  onClick={() => handleHapticNavigate(item.id)}
+                  className={`relative flex-1 sm:flex-none flex flex-col items-center justify-center gap-1.5 transition-all duration-500 group outline-none ${
                     isSelected
-                      ? 'text-black dark:text-white'
-                      : 'text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : 'text-black/50 dark:text-white/50 hover:text-indigo-600/80 dark:hover:text-indigo-400/80'
                   }`}
                 >
-                  {isSelected && (
-                    <motion.div 
-                      layoutId="bottom-nav-indicator"
-                      className="absolute inset-0 rounded-full z-0 bg-black/5 dark:bg-white/10 transition-colors duration-300"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 relative z-10 transition-transform duration-300 group-hover:scale-110" strokeWidth={isSelected ? 2.5 : 2} />
+                  <div className="relative px-6 py-2 rounded-full flex items-center justify-center transition-colors">
+                    {isSelected && (
+                      <motion.div 
+                        layoutId="nav-pill"
+                        className="absolute inset-0 rounded-full bg-indigo-50 dark:bg-indigo-500/15 shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_3px_rgba(255,255,255,0.05)]"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <Icon className="w-6 h-6 relative z-10 transition-transform duration-300 group-hover:scale-110 group-active:scale-95" strokeWidth={isSelected ? 2.5 : 2} />
+                  </div>
+                  <span className={`text-[11px] font-bold tracking-wide transition-all duration-300 ${isSelected ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 h-0 overflow-hidden'}`}>
+                    {item.label}
+                  </span>
                 </button>
               );
             })}

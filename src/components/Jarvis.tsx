@@ -165,7 +165,7 @@ export default function Jarvis({
   const isDark = !isThemeLight;
 
   return (
-    <div className={`h-[100dvh] w-full flex font-sans overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#000000] text-slate-200' : 'bg-[#fafafa] text-slate-800'}`}>
+    <div className={`h-screen h-[100dvh] w-full flex font-sans overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#000000] text-slate-200' : 'bg-[#fafafa] text-slate-800'}`}>
       
       {/* Dynamic Ambient Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -248,7 +248,7 @@ export default function Jarvis({
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative min-w-0 z-10 h-[100dvh]">
+      <div className="flex-1 flex flex-col relative min-w-0 z-10 h-screen h-[100dvh]">
         
         {/* Top Header Glassmorphism */}
         <div className={`flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-xl sticky top-0 z-20 border-b transition-colors

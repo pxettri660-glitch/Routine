@@ -32,3 +32,5 @@ export const googleProvider = new GoogleAuthProvider();
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
 export default app;
+
+// export default app;
