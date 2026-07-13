@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { CalendarIcon, Sliders, Target, CheckSquare, FileText, Timer, Clock, Calculator, BookOpen, Activity, Focus } from 'lucide-react';
+import { CalendarIcon, Sliders, Target, CheckSquare, FileText, Timer, Clock, Calculator, BookOpen, Activity, Focus, Code } from 'lucide-react';
 
 interface Props {
   onNavigate: (view: string) => void;
@@ -17,6 +17,7 @@ const StudyNav: React.FC<Props> = ({ onNavigate }) => {
     { id: 'focus', title: 'Stopwatch', icon: Clock, color: 'from-slate-500 to-gray-400' },
     { id: 'tools', title: 'Calculator', icon: Calculator, color: 'from-sky-500 to-blue-400' },
     { id: 'more', title: 'Flashcards', icon: BookOpen, color: 'from-fuchsia-500 to-pink-400' },
+    { id: 'code-practice', title: 'Code Practice', icon: Code, color: 'from-emerald-500 to-green-400' },
     { id: 'profile', title: 'Statistics', icon: Activity, color: 'from-violet-500 to-purple-400' },
     { id: 'focus', title: 'Focus Mode', icon: Focus, color: 'from-indigo-600 to-blue-600' },
   ];

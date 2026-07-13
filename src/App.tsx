@@ -47,6 +47,7 @@ import StudyNav from './components/StudyNav';
 import AINav from './components/AINav';
 import CommunityNav from './components/CommunityNav';
 import ProfileNav from './components/ProfileNav';
+import CodePractice from './components/CodePractice';
 import { BookOpen, Users } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import { requestNotificationPermissions } from './lib/notifications';
@@ -576,6 +577,9 @@ export default function App() {
                   )}
                   {currentView === 'community_nav' && (
                     <CommunityNav onNavigate={handleNavigate} />
+                  )}
+                  {currentView === 'code-practice' && (
+                    <CodePractice onAwardXP={handleAwardXP} />
                   )}
                   {currentView === 'profile_nav' && (
                     <ProfileNav onNavigate={handleNavigate} isThemeLight={isThemeLight} onToggleTheme={() => setIsThemeLight(!isThemeLight)} />
