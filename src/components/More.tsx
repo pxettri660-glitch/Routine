@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { Sliders, Target, FileText, MessageCircle, Music, Settings, User, Shield, Info, HelpCircle, Save, Download, Archive, Hash, Bell } from 'lucide-react';
 
@@ -7,6 +8,8 @@ interface MoreProps {
 }
 
 const More = React.memo(function More({ onNavigate }: MoreProps) {
+  const { user } = useAuth();
+  const isAdmin = user && [import.meta.env.VITE_ADMIN_UID, 'gwvcfcQqpKgFf8oR6OruOmYm1s82'].includes(user.uid);
   const menuGroups = [
     {
       title: 'Routine & Focus',
@@ -38,7 +41,7 @@ const More = React.memo(function More({ onNavigate }: MoreProps) {
       title: 'System',
       items: [
         { id: 'profile', icon: User, label: 'Profile', color: 'text-blue-600' },
-        { id: 'admin', icon: Shield, label: 'Admin Panel', color: 'text-red-500' },
+            ...(isAdmin ? [{ id: 'admin', icon: Shield, label: 'Admin Panel', color: 'text-red-500' }] : []),
         { id: 'tools', icon: Info, label: 'About', color: 'text-indigo-400' },
         { id: 'tools', icon: HelpCircle, label: 'Help & Support', color: 'text-emerald-400' },
       ]

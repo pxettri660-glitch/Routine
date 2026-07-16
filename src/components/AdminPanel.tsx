@@ -1,251 +1,333 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Shield, Users, AlertTriangle, MessageSquare, Ban, VolumeX, CheckCircle, Trash2, ShieldAlert } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { 
+  Shield, Users, MessageSquare, AlertTriangle, 
+  Settings, UserX, UserCheck, Trash2, Edit2, Info, Search, MessageCircle, Lock, Unlock, Speaker
+} from 'lucide-react';
+import { collection, query, getDocs, updateDoc, doc, deleteDoc, where, addDoc, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, doc, setDoc, deleteDoc, getDoc, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
+import { UserProfile, Thread, Report, Message } from './community/types';
+import AdminCreateGroup from './community/AdminCreateGroup';
+import AdminManageGroup from './community/AdminManageGroup';
 
 export default function AdminPanel() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'reports' | 'announcements' | 'groups'>('users');
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isModerator, setIsModerator] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'messages' | 'groups' | 'reports' | 'announcements'>('dashboard');
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [groups, setGroups] = useState<Thread[]>([]);
+  const [recentMessages, setRecentMessages] = useState<(Message & { threadName: string })[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   
-  const [usersList, setUsersList] = useState<any[]>([]);
-  const [roles, setRoles] = useState<Record<string, string>>({});
-  const [banned, setBanned] = useState<Record<string, boolean>>({});
-  const [muted, setMuted] = useState<Record<string, boolean>>({});
-  
-  const SUPER_ADMIN_UIDS = ['gwvcfcQqpKgFf8oR6OruOmYm1s82', 'QDkkZtRwlDcdALtsFWEg9HAcgAC2'];
+  const [stats, setStats] = useState({ totalUsers: 0, onlineUsers: 0, totalGroups: 0, totalDMs: 0, totalMessages: 0 });
+  const [loading, setLoading] = useState(true);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [managingGroup, setManagingGroup] = useState<Thread | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const isAdmin = user && [import.meta.env.VITE_ADMIN_UID, 'gwvcfcQqpKgFf8oR6OruOmYm1s82', 'QDkkZtRwlDcdALtsFWEg9HAcgAC2'].includes(user.uid);
 
   useEffect(() => {
-    if (user) {
-      if (SUPER_ADMIN_UIDS.includes(user.uid)) {
-        setIsSuperAdmin(true);
-        setIsModerator(true);
-        // Ensure super admin role is set in DB
-        setDoc(doc(db, 'roles', user.uid), { role: 'super_admin' }, { merge: true }).catch(console.error);
-      } else {
-        getDoc(doc(db, 'roles', user.uid)).then(snap => {
-          if (snap.exists() && (snap.data().role === 'moderator' || snap.data().role === 'super_admin')) {
-            setIsModerator(true);
-            if (snap.data().role === 'super_admin') setIsSuperAdmin(true);
-          }
-        });
-      }
+    if (isAdmin) {
+      loadData();
     }
-  }, [user]);
+  }, [isAdmin]);
 
-  useEffect(() => {
-    if (isModerator) {
-      loadUsers();
-    }
-  }, [isModerator]);
-
-  const loadUsers = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const usersSnap = await getDocs(query(collection(db, 'roles')));
-      const rolesData: Record<string, string> = {};
-      usersSnap.forEach(d => { rolesData[d.id] = d.data().role; });
-      setRoles(rolesData);
+      const uSnap = await getDocs(collection(db, 'users'));
+      const uList: UserProfile[] = [];
+      let online = 0;
+      uSnap.forEach(d => {
+        const u = { uid: d.id, ...d.data() } as UserProfile;
+        uList.push(u);
+        if (u.isOnline) online++;
+      });
+      setUsers(uList);
 
-      const bannedSnap = await getDocs(query(collection(db, 'banned_users')));
-      const bannedData: Record<string, boolean> = {};
-      bannedSnap.forEach(d => { bannedData[d.id] = true; });
-      setBanned(bannedData);
+      const tSnap = await getDocs(collection(db, 'threads'));
+      const tList: Thread[] = [];
+      let dms = 0;
+      let grps = 0;
+      tSnap.forEach(d => {
+        const t = { id: d.id, ...d.data() } as Thread;
+        if (t.type === 'dm') dms++;
+        else grps++;
+        tList.push(t);
+      });
+      setGroups(tList.filter(t => t.type !== 'dm'));
 
-      const mutedSnap = await getDocs(query(collection(db, 'muted_users')));
-      const mutedData: Record<string, boolean> = {};
-      mutedSnap.forEach(d => { mutedData[d.id] = true; });
-      setMuted(mutedData);
-
-      // We might not be able to list all users directly without a collection group or specific structure if not super admin,
-      // but assuming super admin can list them or we just list from a known 'users' collection (which we don't have a flat list for).
-      // Wait, the 'users' collection has documents for each user, but they are empty if only subcollections exist, unless we wrote to them.
-      // In AuthContext, we write to /users/{uid}/profile/data. So we might need to fetch that.
-      // But we can't easily list all profiles without a collection group query.
-      // Let's just create a basic list for demonstration using the roles/banned/muted keys.
-      const allUids = Array.from(new Set([...Object.keys(rolesData), ...Object.keys(bannedData), ...Object.keys(mutedData)]));
+      // Let's just approximate total messages by scanning some threads (since it's a subcollection, a collectionGroup query is better)
+      const mSnap = await getDocs(query(collection(db, 'messages'), orderBy('timestamp', 'desc'), limit(50))); 
+      // Wait, we used subcollections 'threads/{id}/messages'. A collectionGroup query requires an index.
+      // We will skip total messages count or do a fast query if possible. We can just omit total messages if we don't have collectionGroup.
       
-      const loadedUsers = [];
-      for (const uid of allUids) {
-         loadedUsers.push({ uid, role: rolesData[uid] || 'user' });
-      }
-      setUsersList(loadedUsers);
-    } catch (e) {
-      console.error("Error loading users:", e);
+      const rSnap = await getDocs(collection(db, 'reports'));
+      const rList: Report[] = [];
+      rSnap.forEach(d => {
+        rList.push({ id: d.id, ...d.data() } as Report);
+      });
+      setReports(rList);
+
+      setStats({
+        totalUsers: uList.length,
+        onlineUsers: online,
+        totalGroups: grps,
+        totalDMs: dms,
+        totalMessages: 0
+      });
+    } catch (error) {
+      console.error("Admin load error:", error);
     }
+    setLoading(false);
   };
 
-  const handleSetRole = async (uid: string, role: string) => {
-    if (!isSuperAdmin) return alert("Only Super Admin can change roles.");
+  const toggleUserField = async (uid: string, field: 'isBanned' | 'isDisabled', currentVal: boolean) => {
     try {
-      await setDoc(doc(db, 'roles', uid), { role });
-      setRoles(prev => ({ ...prev, [uid]: role }));
-      alert(`Role updated to ${role}`);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to update role");
-    }
-  };
-
-  const handleBan = async (uid: string, isCurrentlyBanned: boolean) => {
-    if (!isSuperAdmin) return alert("Only Super Admin can ban users.");
-    try {
-      if (isCurrentlyBanned) {
-        await deleteDoc(doc(db, 'banned_users', uid));
-        setBanned(prev => { const n = {...prev}; delete n[uid]; return n; });
-      } else {
-        await setDoc(doc(db, 'banned_users', uid), { bannedAt: serverTimestamp(), bannedBy: user?.uid });
-        setBanned(prev => ({ ...prev, [uid]: true }));
-      }
+      await updateDoc(doc(db, 'users', uid), { [field]: !currentVal });
+      setUsers(users.map(u => u.uid === uid ? { ...u, [field]: !currentVal } : u));
     } catch (e) {
       console.error(e);
+      alert("Failed to update user");
     }
   };
-
-  const handleMute = async (uid: string, isCurrentlyMuted: boolean) => {
-    if (!isModerator) return alert("Only Moderators/Admins can mute.");
+  
+  const toggleGroupLock = async (threadId: string, currentVal: boolean) => {
     try {
-      if (isCurrentlyMuted) {
-        await deleteDoc(doc(db, 'muted_users', uid));
-        setMuted(prev => { const n = {...prev}; delete n[uid]; return n; });
-      } else {
-        await setDoc(doc(db, 'muted_users', uid), { mutedAt: serverTimestamp(), mutedBy: user?.uid });
-        setMuted(prev => ({ ...prev, [uid]: true }));
-      }
+      await updateDoc(doc(db, 'threads', threadId), { isLocked: !currentVal });
+      setGroups(groups.map(g => g.id === threadId ? { ...g, isLocked: !currentVal } : g));
     } catch (e) {
       console.error(e);
     }
   };
 
-  if (!isModerator) {
+  const deleteGroup = async (threadId: string) => {
+    if (!confirm("Delete this group permanently?")) return;
+    try {
+      await deleteDoc(doc(db, 'threads', threadId));
+      setGroups(groups.filter(g => g.id !== threadId));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  if (!isAdmin) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
-        <div className="text-center space-y-4">
-          <ShieldAlert className="w-16 h-16 text-red-500 mx-auto" />
-          <h2 className="text-2xl font-bold">Access Denied</h2>
-          <p className="text-black/50 dark:text-white/50">You do not have permission to view this page.</p>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-[#0a0a0a]">
+        <Shield className="w-16 h-16 text-red-500 mb-4 opacity-50" />
+        <h2 className="text-2xl font-bold text-black dark:text-white mb-2">Access Restricted</h2>
+        <p className="text-black/50 dark:text-white/50 max-w-md">You do not have permission to view the Admin Panel.</p>
       </div>
     );
   }
 
+  const filteredUsers = users.filter(u => 
+    u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="bg-[#fafafa] dark:bg-[#0a0a0a] rounded-3xl overflow-hidden shadow-2xl border border-black/5 dark:border-white/10 min-h-[80vh] flex flex-col">
-      <div className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-black/5 dark:border-white/10 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Shield className="w-6 h-6 text-blue-500" />
-            Admin Dashboard
-          </h2>
-          <p className="text-sm text-black/50 dark:text-white/50">
-            {isSuperAdmin ? 'Super Admin Access' : 'Moderator Access'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}`}>Users</button>
-          <button onClick={() => setActiveTab('reports')} className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${activeTab === 'reports' ? 'bg-blue-600 text-white' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}`}>Reports</button>
-          <button onClick={() => setActiveTab('groups')} className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${activeTab === 'groups' ? 'bg-blue-600 text-white' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}`}>Groups</button>
-          {isSuperAdmin && <button onClick={() => setActiveTab('announcements')} className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${activeTab === 'announcements' ? 'bg-blue-600 text-white' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}`}>Announcements</button>}
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-[#f8f9fa] dark:bg-[#0a0a0a] overflow-hidden">
+      <div className="p-6 border-b border-black/5 dark:border-white/5 shrink-0 bg-white dark:bg-[#111111]">
+        <h1 className="text-2xl font-bold flex items-center gap-2 mb-4">
+          <Shield className="w-6 h-6 text-red-500" />
+          System Administrator
+        </h1>
+        
+        <div className="flex overflow-x-auto no-scrollbar gap-2">
+          {['dashboard', 'users', 'groups', 'reports', 'announcements'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`
+                px-4 py-2 rounded-xl text-sm font-bold capitalize whitespace-nowrap transition-all
+                ${activeTab === tab 
+                  ? 'bg-red-500 text-white shadow-md' 
+                  : 'bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10'}
+              `}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="flex-1 p-6 overflow-y-auto">
-        {activeTab === 'users' && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold mb-4">User Management</h3>
-            <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/10 overflow-hidden">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-black/5 dark:bg-white/5 font-bold">
-                  <tr>
-                    <th className="px-4 py-3">UID</th>
-                    <th className="px-4 py-3">Role</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5 dark:divide-white/10">
-                  {usersList.map(u => (
-                    <tr key={u.uid} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs">{u.uid}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${roles[u.uid] === 'super_admin' ? 'bg-purple-500/20 text-purple-500' : roles[u.uid] === 'moderator' ? 'bg-blue-500/20 text-blue-500' : 'bg-gray-500/20 text-gray-500'}`}>
-                          {roles[u.uid] || 'user'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 flex gap-2">
-                        {banned[u.uid] && <span className="px-2 py-1 bg-red-500/20 text-red-500 rounded-md text-xs font-bold">Banned</span>}
-                        {muted[u.uid] && <span className="px-2 py-1 bg-orange-500/20 text-orange-500 rounded-md text-xs font-bold">Muted</span>}
-                        {!banned[u.uid] && !muted[u.uid] && <span className="px-2 py-1 bg-green-500/20 text-green-500 rounded-md text-xs font-bold">Active</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => handleMute(u.uid, !!muted[u.uid])} className="p-2 bg-black/5 dark:bg-white/10 hover:bg-orange-500/20 hover:text-orange-500 rounded-lg transition-colors">
-                            {muted[u.uid] ? <VolumeX className="w-4 h-4 text-orange-500" /> : <VolumeX className="w-4 h-4" />}
+      <div className="flex-1 overflow-y-auto p-6">
+        {loading ? (
+          <div className="flex items-center justify-center h-full text-black/50 dark:text-white/50 font-bold">
+            Loading system data...
+          </div>
+        ) : (
+          <div className="max-w-6xl mx-auto space-y-6">
+            
+            {activeTab === 'dashboard' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard title="Total Users" value={stats.totalUsers} icon={Users} color="text-blue-500" bg="bg-blue-500/10" />
+                <StatCard title="Online Now" value={stats.onlineUsers} icon={UserCheck} color="text-emerald-500" bg="bg-emerald-500/10" />
+                <StatCard title="Total Groups" value={stats.totalGroups} icon={MessageSquare} color="text-purple-500" bg="bg-purple-500/10" />
+                <StatCard title="Private DMs" value={stats.totalDMs} icon={MessageCircle} color="text-indigo-500" bg="bg-indigo-500/10" />
+              </div>
+            )}
+
+            {activeTab === 'users' && (
+              <div className="bg-white dark:bg-[#111111] rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden shadow-sm flex flex-col">
+                <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+                  <div className="relative w-64">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40" />
+                    <input 
+                      type="text"
+                      placeholder="Search users..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-black/5 dark:bg-white/5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-black/5 dark:bg-white/5 font-bold text-black/60 dark:text-white/60">
+                      <tr>
+                        <th className="px-4 py-3">User</th>
+                        <th className="px-4 py-3">Email</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Chat Perms</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                      {filteredUsers.map(u => (
+                        <tr key={u.uid} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                          <td className="px-4 py-3 font-bold flex items-center gap-3">
+                            <img src={u.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${u.displayName}`} className="w-8 h-8 rounded-full bg-black/10" />
+                            {u.displayName}
+                          </td>
+                          <td className="px-4 py-3 opacity-70">{u.email}</td>
+                          <td className="px-4 py-3">
+                            {u.isBanned ? (
+                              <span className="px-2 py-1 bg-red-500/10 text-red-500 rounded-md text-xs font-bold">Banned</span>
+                            ) : u.isOnline ? (
+                              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-md text-xs font-bold">Online</span>
+                            ) : (
+                              <span className="px-2 py-1 bg-black/10 dark:bg-white/10 text-black/60 dark:text-white/60 rounded-md text-xs font-bold">Offline</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {u.isDisabled ? (
+                              <span className="px-2 py-1 bg-amber-500/10 text-amber-500 rounded-md text-xs font-bold">Muted</span>
+                            ) : (
+                              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-md text-xs font-bold">Active</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right space-x-2">
+                            <button 
+                              onClick={() => toggleUserField(u.uid, 'isDisabled', u.isDisabled)}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${u.isDisabled ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20' : 'bg-black/5 dark:bg-white/5 hover:bg-amber-500/10 hover:text-amber-500'}`}
+                            >
+                              {u.isDisabled ? 'Unmute' : 'Mute'}
+                            </button>
+                            <button 
+                              onClick={() => toggleUserField(u.uid, 'isBanned', u.isBanned)}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${u.isBanned ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-black/5 dark:bg-white/5 hover:bg-red-500/10 hover:text-red-500'}`}
+                            >
+                              {u.isBanned ? 'Unban' : 'Ban'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'groups' && (
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <button onClick={() => setShowCreateGroup(true)} className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 transition-colors">
+                    + Create Group
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {groups.map(g => (
+                    <div key={g.id} className="bg-white dark:bg-[#111111] p-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm flex flex-col gap-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          {g.photoURL ? (
+                            <img src={g.photoURL} className="w-10 h-10 rounded-full" />
+                          ) : (
+                            <div className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-bold text-lg ${g.isGlobal ? 'bg-blue-500' : 'bg-emerald-500'}`}>
+                              {g.isGlobal ? 'G' : g.name?.[0]?.toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-bold flex items-center gap-2">
+                              {g.name}
+                              {g.isLocked && <Lock className="w-3 h-3 text-red-500" />}
+                            </h3>
+                            <p className="text-xs text-black/50 dark:text-white/50 capitalize">{g.isGlobal ? 'Global Community' : `${g.type} • ${g.members?.length || 0} members`}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => toggleGroupLock(g.id, g.isLocked)} className="p-2 text-black/40 hover:text-black dark:text-white/40 dark:hover:text-white bg-black/5 dark:bg-white/5 rounded-lg">
+                            {g.isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                           </button>
-                          {isSuperAdmin && (
-                            <>
-                              <button onClick={() => handleBan(u.uid, !!banned[u.uid])} className="p-2 bg-black/5 dark:bg-white/10 hover:bg-red-500/20 hover:text-red-500 rounded-lg transition-colors">
-                                {banned[u.uid] ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Ban className="w-4 h-4" />}
-                              </button>
-                              <select 
-                                value={roles[u.uid] || 'user'}
-                                onChange={(e) => handleSetRole(u.uid, e.target.value)}
-                                className="bg-black/5 dark:bg-white/10 rounded-lg px-2 text-xs font-bold focus:outline-none"
-                              >
-                                <option value="user">User</option>
-                                <option value="moderator">Mod</option>
-                                <option value="super_admin">Admin</option>
-                              </select>
-                            </>
+                          <button onClick={() => setManagingGroup(g)} className="p-2 text-black/40 hover:text-black dark:text-white/40 dark:hover:text-white bg-black/5 dark:bg-white/5 rounded-lg">
+                            <Settings className="w-4 h-4" />
+                          </button>
+                          {!g.isGlobal && (
+                            <button onClick={() => deleteGroup(g.id)} className="p-2 text-red-400 hover:text-red-500 bg-red-500/10 rounded-lg">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                  {usersList.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-black/50 dark:text-white/50">
-                        No users tracked yet. Users will appear here once they are assigned a role or status.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-        
-
-        {activeTab === 'reports' && (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-black/50 dark:text-white/50">Reports module coming soon.</p>
-          </div>
-        )}
-        
-        {activeTab === 'groups' && (
-          <div className="flex flex-col items-center justify-center h-full space-y-4">
-            <h3 className="text-lg font-bold">Group Management</h3>
-            <p className="text-black/50 dark:text-white/50">Create, manage, and moderate community groups here.</p>
-            {isSuperAdmin && (
-              <button className="px-6 py-2 bg-blue-600 text-white rounded-full font-bold hover:bg-blue-500 transition-colors">
-                + Create New Group
-              </button>
+                </div>
+            {showCreateGroup && (
+              <AdminCreateGroup 
+                onClose={() => setShowCreateGroup(false)} 
+                onSuccess={loadData} 
+              />
             )}
-          </div>
-        )}
-        
-        {activeTab === 'announcements' && (
-          <div className="flex flex-col items-center justify-center h-full space-y-4">
-            <h3 className="text-lg font-bold">Announcements</h3>
-            <p className="text-black/50 dark:text-white/50">Pin important messages to the global chat.</p>
-            <button className="px-6 py-2 bg-yellow-500 text-white rounded-full font-bold hover:bg-yellow-400 transition-colors">
-              New Announcement
-            </button>
-          </div>
-        )}
+            {managingGroup && (
+              <AdminManageGroup
+                group={managingGroup}
+                onClose={() => setManagingGroup(null)}
+                onSuccess={loadData}
+              />
+            )}
+              </div>
+            )}
 
+            {activeTab === 'announcements' && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Speaker className="w-16 h-16 text-blue-500 mb-4 opacity-50" />
+                <h3 className="text-xl font-bold mb-2">Broadcast System</h3>
+                <p className="text-black/50 dark:text-white/50 mb-6">Send important alerts to all users or specific groups.</p>
+                <button className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-500 hover:scale-105 transition-all">
+                  Create Announcement
+                </button>
+              </div>
+            )}
+
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon: Icon, color, bg }: any) {
+  return (
+    <div className="bg-white dark:bg-[#111111] p-5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-black/50 dark:text-white/50 mb-1">{title}</p>
+        <p className="text-3xl font-bold">{value}</p>
+      </div>
+      <div className={`p-4 rounded-xl ${bg} ${color}`}>
+        <Icon className="w-6 h-6" />
       </div>
     </div>
   );

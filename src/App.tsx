@@ -40,7 +40,6 @@ import Entertainment from './components/Entertainment';
 import Focus from './components/Focus';
 import WelcomeScreen from './components/WelcomeScreen';
 import UserProfile from './components/UserProfile';
-import CommunityChat from './components/CommunityChat';
 import AdminPanel from './components/AdminPanel';
 import More from './components/More';
 import StudyNav from './components/StudyNav';
@@ -559,9 +558,6 @@ export default function App() {
 
                   {currentView === 'tasks' && (
                     <Tasks tasks={tasks} onUpdateTasks={setTasks} onAwardXP={handleAwardXP} />
-                  )}
-                  {currentView === 'chat' && (
-                    <CommunityChat />
                   )}
                   {currentView === 'admin' && (
                     <AdminPanel />
