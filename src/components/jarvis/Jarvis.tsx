@@ -9,7 +9,7 @@ import {
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'motion/react';
-import { useFirestoreCollection } from '../hooks/useFirestoreSync';
+import { useFirestoreCollection } from '../../hooks/useFirestoreSync';
 
 interface ChatMessage {
   id: string;
@@ -38,7 +38,7 @@ export default function Jarvis({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [inputVal, setInputVal] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [aiMode, setAiMode] = useState<'general' | 'study' | 'coding'>('general');
+  const [aiMode, setAiMode] = useState<'general' | 'study' | 'coding' | 'automation'>('general');
   const [selectedModel, setSelectedModel] = useState('auto');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [attachedImage, setAttachedImage] = useState<{ name: string; mimeType: string; data: string } | null>(null);
@@ -196,9 +196,9 @@ export default function Jarvis({
         <div className={`p-5 flex items-center justify-between border-b ${isDark ? 'border-white/[0.05]' : 'border-black/[0.05]'}`}>
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${activeGradient} flex items-center justify-center text-white shadow-lg`}>
-              <Sparkles className="w-4 h-4" />
+              <Cpu className="w-4 h-4" />
             </div>
-            <h1 className="font-semibold tracking-wide text-sm">STUDY ASSISTANT</h1>
+            <h1 className="font-semibold tracking-wide text-sm">NEXUS OS</h1>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(false)}
@@ -228,11 +228,14 @@ export default function Jarvis({
            <button onClick={() => setAiMode('general')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${aiMode === 'general' ? (isDark ? 'bg-white/10 text-white font-medium' : 'bg-black/5 text-black font-medium') : (isDark ? 'text-white/70 hover:bg-white/5' : 'text-black/70 hover:bg-black/5')}`}>
              <Globe className="w-4 h-4" /> General AI
            </button>
+           <button onClick={() => setAiMode('automation')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${aiMode === 'automation' ? (isDark ? 'bg-white/10 text-white font-medium' : 'bg-black/5 text-black font-medium') : (isDark ? 'text-white/70 hover:bg-white/5' : 'text-black/70 hover:bg-black/5')}`}>
+             <Zap className="w-4 h-4 text-amber-400" /> ADB Automation
+           </button>
            <button onClick={() => setAiMode('study')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${aiMode === 'study' ? (isDark ? 'bg-white/10 text-white font-medium' : 'bg-black/5 text-black font-medium') : (isDark ? 'text-white/70 hover:bg-white/5' : 'text-black/70 hover:bg-black/5')}`}>
-             <Sparkles className="w-4 h-4" /> Study Tutor
+             <Sparkles className="w-4 h-4" /> Deep Analytics
            </button>
            <button onClick={() => setAiMode('coding')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm ${aiMode === 'coding' ? (isDark ? 'bg-white/10 text-white font-medium' : 'bg-black/5 text-black font-medium') : (isDark ? 'text-white/70 hover:bg-white/5' : 'text-black/70 hover:bg-black/5')}`}>
-             <Code className="w-4 h-4" /> Code Copilot
+             <Code className="w-4 h-4" /> Code Sandbox
            </button>
         </div>
 
@@ -356,8 +359,8 @@ export default function Jarvis({
                 transition={{ delay: 0.2, duration: 0.5 }} 
                 className="space-y-4"
               >
-                <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">How can I assist you?</h2>
-                <p className={`text-base ${isDark ? 'text-white/50' : 'text-black/50'}`}>Engage with intelligence powered by Gemini, DeepSeek, and Llama.</p>
+                <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">NEXUS Core Online</h2>
+                <p className={`text-base ${isDark ? 'text-white/50' : 'text-black/50'}`}>Engage with autonomous intelligence powered by Gemini, DeepSeek, and Llama.</p>
               </motion.div>
               
               <motion.div 
@@ -367,10 +370,10 @@ export default function Jarvis({
                 className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full"
               >
                 {[
-                  { label: "Analyze complex data", icon: Sparkles, mode: 'study' },
-                  { label: "Write a React component", icon: Code, mode: 'coding' },
-                  { label: "Describe an image concept", icon: ImageIcon, mode: 'general' },
-                  { label: "Draft a professional email", icon: FileText, mode: 'general' }
+                  { label: "Automate Android Device (ADB)", icon: Zap, mode: 'automation' },
+                  { label: "Run Coding Sandbox", icon: Code, mode: 'coding' },
+                  { label: "Deep Data Analytics", icon: Sparkles, mode: 'study' },
+                  { label: "General Cognition", icon: Globe, mode: 'general' }
                 ].map((s, i) => (
                   <button 
                     key={i} 
@@ -583,7 +586,7 @@ export default function Jarvis({
               </form>
               
               <div className="text-center mt-3 text-xs font-medium opacity-50">
-                Study Assistant may display inaccurate info, so double-check its responses.
+                NEXUS AI executes automated tasks and reasoning. Verify physical actions when prompted.
               </div>
             
             </div>

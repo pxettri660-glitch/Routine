@@ -2,15 +2,25 @@ import React, { useState } from 'react';
 import ChatSidebar from './ChatSidebar';
 import ChatRoom from './ChatRoom';
 import { useChat } from './hooks/useChat';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Plus, Users, LogIn } from 'lucide-react';
+import AdminCreateGroup from './AdminCreateGroup';
+import JoinGroup from './JoinGroup';
+import { useAuth } from '../../contexts/AuthContext';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface CommunityLayoutProps {
   onNavigate: (view: string) => void;
 }
 
 export default function CommunityLayout({ onNavigate }: CommunityLayoutProps) {
+  const { user } = useAuth();
   const { threads, activeThread, setActiveThreadId, loadingThreads } = useChat();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [showFABMenu, setShowFABMenu] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showJoinGroup, setShowJoinGroup] = useState(false);
+
+  const isAdmin = user && ['gwvcfcQqpKgFf8oR6OruOmYm1s82', 'QDkkZtRwlDcdALtsFWEg9HAcgAC2', import.meta.env.VITE_ADMIN_UID].includes(user.uid);
 
   return (
     <div className="flex h-full w-full bg-white dark:bg-[#0a0a0a] relative overflow-hidden">
@@ -55,6 +65,62 @@ export default function CommunityLayout({ onNavigate }: CommunityLayoutProps) {
           </div>
         )}
       </div>
+
+      {/* Floating Action Button */}
+      <div className="absolute bottom-8 right-8 z-50 flex flex-col items-end gap-3">
+        <AnimatePresence>
+          {showFABMenu && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              className="flex flex-col gap-2 items-end mb-2"
+            >
+              {isAdmin && (
+                <button 
+                  onClick={() => { setShowCreateGroup(true); setShowFABMenu(false); }}
+                  className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-[#1a1a1a] border border-black/5 dark:border-white/5 shadow-lg rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
+                >
+                  <span className="font-bold text-sm">Create Group</span>
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg group-hover:scale-110 transition-transform">
+                    <Users className="w-4 h-4" />
+                  </div>
+                </button>
+              )}
+              <button 
+                onClick={() => { setShowJoinGroup(true); setShowFABMenu(false); }}
+                className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-[#1a1a1a] border border-black/5 dark:border-white/5 shadow-lg rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
+              >
+                <span className="font-bold text-sm">Join Group</span>
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:scale-110 transition-transform">
+                  <LogIn className="w-4 h-4" />
+                </div>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <button
+          onClick={() => setShowFABMenu(!showFABMenu)}
+          className={`p-4 rounded-full shadow-[0_8px_30px_rgba(99,102,241,0.4)] text-white transition-all duration-300 active:scale-95 ${showFABMenu ? 'bg-rose-500 rotate-45' : 'bg-indigo-600 hover:bg-indigo-500 hover:scale-105'}`}
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      </div>
+
+      {showCreateGroup && (
+        <AdminCreateGroup 
+          onClose={() => setShowCreateGroup(false)}
+          onSuccess={() => {}}
+        />
+      )}
+      
+      {showJoinGroup && (
+        <JoinGroup 
+          onClose={() => setShowJoinGroup(false)}
+          onSuccess={(threadId) => setActiveThreadId(threadId)}
+        />
+      )}
     </div>
   );
 }

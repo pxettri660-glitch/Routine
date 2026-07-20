@@ -27,6 +27,14 @@ export default function ChatSidebar({ threads, activeThreadId, onSelectThread, i
     return true;
   });
 
+  const sortedThreads = [...filteredThreads].sort((a, b) => {
+    if (a.isGlobal) return -1;
+    if (b.isGlobal) return 1;
+    if (a.type === 'group' && b.type !== 'group') return -1;
+    if (a.type !== 'group' && b.type === 'group') return 1;
+    return b.updatedAt - a.updatedAt;
+  });
+
   return (
     <div className={`
       ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
@@ -95,7 +103,7 @@ export default function ChatSidebar({ threads, activeThreadId, onSelectThread, i
           </div>
         ) : (
           <div className="space-y-1">
-            {filteredThreads.map(thread => {
+            {sortedThreads.map(thread => {
               const isActive = thread.id === activeThreadId;
               const name = thread.name || "User"; 
               const unread = (thread.unreadCount && user) ? (thread.unreadCount[user.uid] || 0) : 0;
@@ -123,6 +131,7 @@ export default function ChatSidebar({ threads, activeThreadId, onSelectThread, i
                         {thread.isGlobal ? <Globe className="w-6 h-6" /> : name[0]?.toUpperCase() || '#'}
                       </div>
                     )}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#f8f9fa] dark:border-[#111111]" />
                     {thread.type === 'group' && !thread.isGlobal && (
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-[#f8f9fa] dark:border-[#111111] flex items-center justify-center">
                         <Users className="w-3 h-3 text-white" />

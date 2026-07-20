@@ -21,12 +21,16 @@ export interface Thread {
   isGlobal?: boolean;
   name?: string;
   photoURL?: string;
+  bannerURL?: string;
+  inviteCode?: string;
+  isPrivate?: boolean;
   description?: string;
   members: string[];
   admins: string[];
   moderators: string[];
   blockedMembers: string[];
   mutedMembers: string[];
+  typingUsers?: string[];
   isLocked: boolean;
   lastMessage?: {
     text: string;

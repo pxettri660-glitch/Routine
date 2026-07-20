@@ -55,7 +55,12 @@ export function useChat() {
        unique.sort((a, b) => b.updatedAt - a.updatedAt);
        setThreads(unique);
        if (!activeThreadId && unique.length > 0) {
-         setActiveThreadId(unique[0].id);
+         const globalThread = unique.find(t => t.isGlobal);
+         if (globalThread) {
+           setActiveThreadId(globalThread.id);
+         } else {
+           setActiveThreadId(unique[0].id);
+         }
        }
        setLoadingThreads(false);
     };

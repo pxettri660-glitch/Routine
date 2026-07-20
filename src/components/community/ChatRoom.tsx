@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Menu, Image as ImageIcon, FileText, Smile, MoreVertical, X, Globe, MessageSquare } from 'lucide-react';
-import { Thread } from './types';
+import { Send, Menu, Image as ImageIcon, FileText, Smile, MoreVertical, X, Globe, MessageSquare, Search } from 'lucide-react';
+import { Thread, Message } from './types';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMessages } from './hooks/useMessages';
 import ChatMessageBubble from './ChatMessageBubble';
+import AdminManageGroup from './AdminManageGroup';
+import GroupInfoModal from './GroupInfoModal';
 
 interface ChatRoomProps {
   thread: Thread;
@@ -12,17 +14,25 @@ interface ChatRoomProps {
 
 export default function ChatRoom({ thread, onOpenMobileSidebar }: ChatRoomProps) {
   const { user } = useAuth();
-  const { messages, loading, sendMessage, editMessage, deleteMessage, reactToMessage } = useMessages(thread);
+  const { messages, loading, sendMessage, editMessage, deleteMessage, reactToMessage, setTypingStatus } = useMessages(thread);
   const [inputText, setInputText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isMuted = user && thread.mutedMembers?.includes(user.uid);
   const isBlocked = user && thread.blockedMembers?.includes(user.uid);
   const isAdmin = user && ['gwvcfcQqpKgFf8oR6OruOmYm1s82', 'QDkkZtRwlDcdALtsFWEg9HAcgAC2', import.meta.env.VITE_ADMIN_UID].includes(user.uid);
+  const isAdminInGroup = user && thread.admins?.includes(user.uid);
+  const [showMenu, setShowMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [showAdminManage, setShowAdminManage] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const isLocked = thread.isLocked && user && !thread.admins?.includes(user.uid) && !isAdmin;
   
   const canSend = !isMuted && !isBlocked && !isLocked;
 
+  const filteredMessages = messages.filter(m => m.text.toLowerCase().includes(searchQuery.toLowerCase()));
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -34,8 +44,11 @@ export default function ChatRoom({ thread, onOpenMobileSidebar }: ChatRoomProps)
   const handleSend = async () => {
     if (!inputText.trim() || !canSend) return;
     const text = inputText.trim();
+    const replyId = replyingTo?.id;
     setInputText('');
-    await sendMessage(text);
+    setReplyingTo(null);
+    await sendMessage(text, undefined, undefined, replyId);
+    setTypingStatus(false);
   };
 
   if (isBlocked) {
@@ -50,6 +63,9 @@ export default function ChatRoom({ thread, onOpenMobileSidebar }: ChatRoomProps)
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#0a0a0a]">
+      {showAdminManage && <AdminManageGroup group={thread} onClose={() => setShowAdminManage(false)} onSuccess={() => setShowAdminManage(false)} />}
+      {showGroupInfo && <GroupInfoModal group={thread} onClose={() => setShowGroupInfo(false)} />}
+
       <div className="h-[72px] shrink-0 border-b border-black/5 dark:border-white/5 flex items-center justify-between px-4 bg-white/50 dark:bg-[#0a0a0a]/50 backdrop-blur-xl sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <button 
@@ -68,6 +84,7 @@ export default function ChatRoom({ thread, onOpenMobileSidebar }: ChatRoomProps)
                 {thread.isGlobal ? <Globe className="w-5 h-5" /> : thread.name?.[0]?.toUpperCase() || '#'}
               </div>
             )}
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-[#0a0a0a]" />
           </div>
           
           <div>
@@ -80,20 +97,50 @@ export default function ChatRoom({ thread, onOpenMobileSidebar }: ChatRoomProps)
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-1">
-          <button className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-black/60 dark:text-white/60">
+        
+        {showSearch && (
+          <div className="absolute top-[72px] left-0 right-0 p-2 bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-black/5 dark:border-white/5 z-10 flex gap-2 items-center">
+            <Search className="w-4 h-4 text-black/50 dark:text-white/50 ml-2" />
+            <input 
+              autoFocus
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search messages..."
+              className="flex-1 bg-transparent outline-none text-sm px-2 py-1"
+            />
+            <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        
+        <div className="flex items-center gap-1 relative">
+          <button onClick={() => setShowSearch(!showSearch)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-black/60 dark:text-white/60">
+            <Search className="w-5 h-5" />
+          </button>
+          <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-black/60 dark:text-white/60">
             <MoreVertical className="w-5 h-5" />
           </button>
+          
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-black/10 dark:border-white/10 z-50 overflow-hidden">
+              {thread.type === 'group' && !thread.isGlobal && (
+                <button onClick={() => { setShowGroupInfo(true); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-bold hover:bg-black/5 dark:hover:bg-white/5">Group Info</button>
+              )}
+              {thread.type === 'group' && !thread.isGlobal && isAdminInGroup && (
+                <button onClick={() => { setShowAdminManage(true); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-bold hover:bg-black/5 dark:hover:bg-white/5 text-indigo-600 dark:text-indigo-400">Manage Group</button>
+              )}
+              <button onClick={() => setShowMenu(false)} className="w-full text-left px-4 py-3 text-sm font-bold hover:bg-black/5 dark:hover:bg-white/5">Close Menu</button>
+            </div>
+          )}
         </div>
       </div>
-
       <div className="flex-1 overflow-y-auto p-4 space-y-6 flex flex-col">
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-black/50 dark:text-white/50">
             Loading messages...
           </div>
-        ) : messages.length === 0 ? (
+        ) : filteredMessages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-black/40 dark:text-white/40">
             <div className="w-16 h-16 bg-black/5 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
               <MessageSquare className="w-8 h-8 opacity-50" />
@@ -148,7 +195,11 @@ export default function ChatRoom({ thread, onOpenMobileSidebar }: ChatRoomProps)
             
             <textarea 
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                if (e.target.value.trim().length === 1 && inputText.length === 0) setTypingStatus(true);
+                if (e.target.value.trim().length === 0 && inputText.length > 0) setTypingStatus(false);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();

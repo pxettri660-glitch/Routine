@@ -9,9 +9,10 @@ interface ChatMessageBubbleProps {
   onDelete: () => void;
   onEdit: (text: string) => void;
   onReact: (emoji: string) => void;
+  onReply?: () => void;
 }
 
-export default function ChatMessageBubble({ message, onDelete, onEdit, onReact }: ChatMessageBubbleProps) {
+export default function ChatMessageBubble({ message, onDelete, onEdit, onReact, onReply }: ChatMessageBubbleProps) {
   const { user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -72,6 +73,11 @@ export default function ChatMessageBubble({ message, onDelete, onEdit, onReact }
                       exit={{ opacity: 0, scale: 0.95 }}
                       className={`absolute top-full mt-1 ${isMe ? 'right-0' : 'left-0'} z-20 w-32 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-black/5 dark:border-white/5 overflow-hidden py-1`}
                     >
+                      
+                      <button onClick={() => { onReply?.(); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2">
+                        Reply
+                      </button>
+  
                       {isMe && (
                         <button 
                           onClick={() => { setIsEditing(true); setShowMenu(false); }}

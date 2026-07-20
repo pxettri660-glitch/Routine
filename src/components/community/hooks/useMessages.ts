@@ -44,7 +44,7 @@ export function useMessages(thread: Thread | null) {
     return () => unsubscribe();
   }, [thread, user]);
 
-  const sendMessage = async (text: string, mediaUrl?: string, mediaType?: 'image' | 'pdf' | 'doc') => {
+  const sendMessage = async (text: string, mediaUrl?: string, mediaType?: 'image' | 'pdf' | 'doc', replyToId?: string) => {
     if (!thread || !user) return;
     
     try {
@@ -79,7 +79,8 @@ export function useMessages(thread: Thread | null) {
         isEdited: false,
         isDeleted: false,
         reactions: {},
-        readBy: [user.uid]
+        readBy: [user.uid],
+        replyToId: replyToId || null
       };
       
       await addDoc(collection(db, 'threads', thread.id, 'messages'), msgData);
@@ -126,6 +127,23 @@ export function useMessages(thread: Thread | null) {
     }
   };
   
+  
+  const setTypingStatus = async (isTyping: boolean) => {
+    if (!thread || !user) return;
+    try {
+      const currentTyping = thread.typingUsers || [];
+      const newTyping = isTyping 
+        ? [...new Set([...currentTyping, user.uid])]
+        : currentTyping.filter(uid => uid !== user.uid);
+        
+      await updateDoc(doc(db, 'threads', thread.id), {
+        typingUsers: newTyping
+      });
+    } catch (e) {
+      console.warn("Could not update typing status");
+    }
+  };
+
   const reactToMessage = async (msgId: string, emoji: string) => {
      if (!thread || !user) return;
      const msg = messages.find(m => m.id === msgId);
@@ -156,6 +174,7 @@ export function useMessages(thread: Thread | null) {
     sendMessage,
     editMessage,
     deleteMessage,
-    reactToMessage
+    reactToMessage,
+    setTypingStatus
   };
 }
